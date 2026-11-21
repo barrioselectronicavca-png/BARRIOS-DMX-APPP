@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BARRIOS PRO - Controlador de Iluminación DMX</title>
-<meta name="barrios-version" content="7.10.0">
+<meta name="barrios-version" content="7.10.1">
 <style>
 :root{
   --bg:#0b0f17;--bg2:#151d2b;--bg3:#1e293b;--line:#324258;--txt:#e6eef8;--mut:#95a8c0;
@@ -72,7 +72,7 @@ input[type=text],input[type=number],select{background:#111926;border:1px solid #
 <body>
 <div id="app">
 <header class="topbar">
-  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.10.0</div></div>
+  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.10.1</div></div>
   <div class="topbtns">
     <button onclick="openTool('Nuevo Show')">📄 Nuevo</button>
     <button onclick="openTool('Abrir Show')">📂 Abrir</button>
@@ -246,6 +246,12 @@ input[type=text],input[type=number],select{background:#111926;border:1px solid #
       <div class="qfx-strobe" style="margin-top:4px"><b style="color:var(--gold)">🎤 Volumen mic:</b>
         <input id="micGainRange" type="range" min="0" max="100" value="60" style="flex:1" oninput="setMicGain(+this.value)">
         <output id="micGainOut" style="min-width:40px;text-align:right;color:var(--gold)">0 dB</output></div>
+      <div class="qfx-strobe" style="margin-top:4px"><b style="color:var(--gold)">🔇 Filtro ruido:</b>
+        <input id="asGate" type="range" min="0" max="100" value="45" style="flex:1" oninput="BARRIOS_AS.setGate(+this.value)">
+        <output id="asGateOut" style="min-width:34px;text-align:right;color:var(--gold)">45</output></div>
+      <div class="qfx-strobe" style="margin-top:4px"><b style="color:var(--gold)">🐢 Vel. movimiento:</b>
+        <input id="asVel" type="range" min="10" max="100" value="50" style="flex:1" oninput="BARRIOS_AS.setVel(+this.value)">
+        <output id="asVelOut" style="min-width:34px;text-align:right;color:var(--gold)">50</output></div>
       <div class="qfx-strobe" style="margin-top:4px"><b style="color:var(--gold)">🎤 Show:</b>
         <select id="asStyleSel" style="flex:1" onchange="BARRIOS_AS&&BARRIOS_AS.setStyle(this.value)">
           <option value="auto">AUTO · show completo (cambia solo)</option><option value="circle">Círculos al ritmo</option><option value="pulse">Pulso al bombo</option><option value="chase">Chase al ritmo</option><option value="fan">Abanico</option><option value="alt">Alterno izq/der</option><option value="cross">Cruce</option><option value="rainbow">Arcoíris rodante</option><option value="wave">Ola de luz</option><option value="snare">Golpes (bombo + caja)</option><option value="burst">Strobe</option>
@@ -4532,7 +4538,7 @@ async function begin(stream,label){
   audioCtx=new (window.AudioContext||window.webkitAudioContext)();
   try{await audioCtx.resume()}catch(e){}
   const src=audioCtx.createMediaStreamSource(stream);
-  analyser=audioCtx.createAnalyser();analyser.fftSize=512;analyser.smoothingTimeConstant=0.6;analyser.minDecibels=-110;analyser.maxDecibels=-10;micGainNode=audioCtx.createGain();micGainNode.gain.value=micGain;src.connect(micGainNode);micGainNode.connect(analyser);
+  analyser=audioCtx.createAnalyser();analyser.fftSize=2048;analyser.smoothingTimeConstant=0.55;analyser.minDecibels=-110;analyser.maxDecibels=-10;micGainNode=audioCtx.createGain();micGainNode.gain.value=micGain;src.connect(micGainNode);micGainNode.connect(analyser);
   audioDataArray=new Uint8Array(analyser.frequencyBinCount);micStream=stream;audioActive=true;
   bassAvg=0.25;midAvg=0.2;highAvg=0.15;updateAudioUI();silentSince=Date.now();
   notify('🎤 Audio FX ACTIVO'+(label?' ('+label+')':''));
@@ -4591,7 +4597,10 @@ const mr=document.getElementById('micGainRange');if(mr){mr.value=micPos;setMicGa
 const A=window.BARRIOS_AS={style:'auto'};
 const NAMES={pulse:'Pulso',circle:'Círculos',chase:'Chase',alt:'Alterno',wave:'Ola',fan:'Abanico',rainbow:'Arcoíris',cross:'Cruce',burst:'Strobe',calm:'Calma',snare:'Golpes'};
 const AUTO=['circle','pulse','chase','fan','alt','rainbow','cross','wave','snare'];
-const st={beatN:0,lastBeat:0,ivs:[],bpm:0,kick:0,snare:0,hue:0,scene:'calm',sceneBeat:0,autoIdx:0,burstUntil:0,lastDrop:0,eShort:0,eLong:0.2,energy:0,cp:[],ct:[],t:0,lastFrame:-1,clock:0,high:0,lastInfo:0,mx:{b:0.1,m:0.1,h:0.1},av:{b:0,m:0,h:0},pb:0,pm:0,lastSnare:0,jump:[0,0],n:1,sil:true};
+let gateV=45,velV=50;try{const g=parseFloat(localStorage.getItem('barrios_as_gate')),v=parseFloat(localStorage.getItem('barrios_as_vel'));if(isFinite(g))gateV=g;if(isFinite(v))velV=v}catch(e){}
+A.setGate=function(v){gateV=v;try{localStorage.setItem('barrios_as_gate',v)}catch(e){}const o=document.getElementById('asGateOut');if(o)o.textContent=v};
+A.setVel=function(v){velV=v;try{localStorage.setItem('barrios_as_vel',v)}catch(e){}const o=document.getElementById('asVelOut');if(o)o.textContent=v};
+const st={F:null,P:{b:0.12,m:0.12,h:0.12},bpmS:100,synth:0,beatN:0,lastBeat:0,ivs:[],bpm:0,kick:0,snare:0,hue:0,scene:'calm',sceneBeat:0,autoIdx:0,burstUntil:0,lastDrop:0,eShort:0,eLong:0.2,energy:0,cp:[],ct:[],t:0,lastFrame:-1,clock:0,high:0,lastInfo:0,mx:{b:0.1,m:0.1,h:0.1},av:{b:0,m:0,h:0},pb:0,pm:0,lastSnare:0,jump:[0,0],n:1,sil:true};
 const fr=x=>x-Math.floor(x);
 function hsv(h,s,v){h=fr(h)*6;const i=Math.floor(h),f=h-i,p=v*(1-s),q=v*(1-s*f),t=v*(1-s*(1-f));
   return [[v,t,p],[q,v,p],[p,v,t],[p,q,v],[t,p,v],[v,p,q]][i%6].map(x=>Math.round(x*255))}
@@ -4600,7 +4609,7 @@ try{const v=localStorage.getItem('barrios_as_style');if(v&&(v==='auto'||NAMES[v]
 function pickScene(){let k;do{k=Math.floor(Math.random()*AUTO.length)}while(AUTO[k]===st.scene&&AUTO.length>1);return AUTO[k]}
 function onBeat(now,synthetic){
   st.beatN++;st.sceneBeat++;st.kick=1;st.hue+=0.07;
-  st.clock+=(Math.round(st.clock)-st.clock)*(synthetic?0:0.7);
+  if(!synthetic&&st.fold)st.clock+=(Math.round(st.clock)-st.clock)*0.5;
   if(!synthetic){const iv=now-st.lastBeat;if(iv>280&&iv<900){st.ivs.push(iv);if(st.ivs.length>10)st.ivs.shift();const o=[...st.ivs].sort((a,b)=>a-b);st.bpm=Math.round(60000/o[o.length>>1])}}
   st.lastBeat=now;
   if(A.style==='auto'&&st.sceneBeat>=8){st.sceneBeat=0;st.scene=pickScene()}
@@ -4608,23 +4617,28 @@ function onBeat(now,synthetic){
 function frame(now,dt){
   st.t+=dt;st.n=Math.max(1,state.fixtures.length);
   const d=audioDataArray;let rb=0,rm=0,rh=0;
-  if(d){for(let i=1;i<=7;i++)rb+=d[i];rb/=7*255;for(let i=10;i<=36;i++)rm+=d[i];rm/=27*255;for(let i=45;i<=110;i++)rh+=d[i];rh/=66*255}
-  st.sil=(rb+rm)<0.05;
-  const M=st.mx,V=st.av,dec=Math.exp(-dt*0.35);
-  M.b=Math.max(M.b*dec,rb,0.08);M.m=Math.max(M.m*dec,rm,0.08);M.h=Math.max(M.h*dec,rh,0.08);
-  const nb=rb/M.b,nm=rm/M.m,nh=rh/M.h;
+  if(d&&analyser&&audioCtx){const hz=audioCtx.sampleRate/analyser.fftSize,bin=f=>Math.max(1,Math.round(f/hz));
+    const avg=(x,y)=>{let q=0,c=0;for(let i=bin(x);i<=bin(y)&&i<d.length;i++){q+=d[i];c++}return c?q/c/255:0};
+    rb=avg(45,120);rm=avg(1800,4500);rh=avg(6000,14000)}
+  if(!st.F)st.F={b:rb,m:rm,h:rh};
+  const F=st.F,P=st.P,gm=gateV/100*0.25,dec=Math.exp(-dt*0.3);
+  const up=(k,r)=>{F[k]+=(r-F[k])*Math.min(1,dt*(r<F[k]?2:0.05))};up('b',rb);up('m',rm);up('h',rh);
+  const lb=Math.max(0,rb-F.b-gm),lh=Math.max(0,rh-F.h-gm),lm=Math.max(0,rm-F.m-gm);
+  P.b=Math.max(P.b*dec,lb,0.12);P.h=Math.max(P.h*dec,lh,0.12);P.m=Math.max(P.m*dec,lm,0.12);
+  st.sil=(lb+lh)<0.035;
+  const V=st.av,nb=lb/P.b,nm=lh/P.h,nh=lh/P.h;
   V.b+=(nb-V.b)*Math.min(1,dt*5);V.m+=(nm-V.m)*Math.min(1,dt*5);V.h+=(nh-V.h)*Math.min(1,dt*5);
   const sens=(typeof audioSensitivity==='number'?audioSensitivity:1.3)/1.3;
   /* bombo */
-  if(!st.sil&&nb>0.5/Math.max(0.6,sens)&&nb-st.pb>0.015&&nb>V.b*1.18&&now-st.lastBeat>235)onBeat(now,false);
-  else if(!st.sil&&st.bpm&&now-st.lastBeat>60000/st.bpm*1.15&&now-st.lastBeat>420)onBeat(now,true); /* mantiene el ritmo si falla un golpe */
+  if(!st.sil&&lb>0.05&&nb>0.55/Math.max(0.6,sens)&&nb-st.pb>0.015&&nb>V.b*1.18&&now-st.lastBeat>260){st.synth=0;onBeat(now,false)}
+  else if(!st.sil&&st.bpm&&st.synth<4&&now-st.lastBeat>60000/st.bpm*1.15&&now-st.lastBeat>420){st.synth++;onBeat(now,true)} /* mantiene el ritmo si falla un golpe */
   /* caja / medios */
-  if(!st.sil&&nm>0.55&&nm-st.pm>0.03&&nm>V.m*1.2&&now-st.lastSnare>170){st.lastSnare=now;st.snare=1;st.jump=[(Math.random()-0.5)*2,(Math.random()-0.5)*2]}
+  if(!st.sil&&lh>0.05&&nm>0.6&&nm-st.pm>0.03&&nm>V.m*1.25&&now-st.lastSnare>200){st.lastSnare=now;st.snare=1;st.jump=[(Math.random()-0.5)*2,(Math.random()-0.5)*2]}
   st.pb=nb;st.pm=nm;
-  if(nh>V.h*1.5+0.1)st.high=1;
+  if(lh>0.05&&nh>V.h*1.5+0.1)st.high=1;
   st.kick*=Math.exp(-dt*9);st.snare*=Math.exp(-dt*11);st.high*=Math.exp(-dt*10);
-  st.clock+=dt*(st.bpm||120)/60;
-  const e=Math.min(1,nb*0.5+nm*0.35+nh*0.15)*(st.sil?0:1);
+  let bp=st.bpm||100,fold=1;while(bp>135){bp/=2;fold=0}while(bp<60){bp*=2;fold=0}st.fold=fold;st.bpmS+=(bp-st.bpmS)*Math.min(1,dt*2);st.clock+=dt*st.bpmS/60;
+  const e=Math.min(1,nb*0.65+nh*0.35)*(st.sil?0:1);
   st.energy+=(e-st.energy)*Math.min(1,dt*8);st.eShort+=(e-st.eShort)*Math.min(1,dt*2.5);st.eLong+=(e-st.eLong)*Math.min(1,dt*0.12);
   if(st.eShort>st.eLong*1.5&&st.eShort>0.55&&now-st.lastDrop>8000){st.lastDrop=now;st.burstUntil=now+1800;st.sceneBeat=0;st.scene=pickScene()}
   if(A.style!=='auto')st.scene=A.style;
@@ -4651,7 +4665,7 @@ A.fx=function(f,idx,mover,bPan,bTilt,size,hasMove,now,dt){
   f.values.Dimmer=Math.max(0,Math.min(255,Math.round(env*255)));
   const c=hsv(h,sat,1);f.values.Red=c[0];f.values.Green=c[1];f.values.Blue=c[2];
   if(mover&&!hasMove){
-    const sz=Math.max(0.8,size),amp=(55+85*Math.min(1,en*1.2))*sz,th=Math.PI*st.clock,sg=(i%2?-1:1);let dp=0,dtl=0;
+    const sz=Math.max(0.8,size),amp=(55+85*Math.min(1,en*1.2))*sz,th=Math.PI*st.clock*0.5*(velV/50),sg=(i%2?-1:1);let dp=0,dtl=0;
     if(sc==='circle'){const o=i*2*Math.PI/n;dp=Math.cos(th+o)*amp;dtl=Math.sin(th+o)*amp*0.85}
     else if(sc==='fan'){dp=((i-mid)/Math.max(1,mid))*amp*(0.2+0.8*Math.abs(Math.cos(th/2)));dtl=-k*amp*0.5+Math.sin(th)*amp*0.2}
     else if(sc==='cross'){dp=sg*amp*(Math.floor(st.clock)%2?1:-1);dtl=Math.sin(th*2)*amp*0.45}
@@ -4662,13 +4676,14 @@ A.fx=function(f,idx,mover,bPan,bTilt,size,hasMove,now,dt){
     else if(sc==='snare'){dp=st.jump[0]*amp*0.9+Math.sin(th/2+i)*amp*0.3;dtl=st.jump[1]*amp*0.6-k*amp*0.5}
     else if(sc==='burst'){dp=sg*Math.sin(now*0.03)*amp*0.5;dtl=-amp*0.5+(fr(st.clock*4)<0.5?amp*0.5:0)}
     else{dp=Math.sin(st.t*0.5+i)*amp*0.35;dtl=Math.cos(st.t*0.4+i)*amp*0.2}
-    const kk=1-Math.exp(-dt*(sc==='burst'?22:15));
+    const kk=1-Math.exp(-dt*(sc==='burst'?22:9));
     if(st.cp[i]===undefined){st.cp[i]=bPan;st.ct[i]=bTilt}
     st.cp[i]+=(bPan+dp-st.cp[i])*kk;st.ct[i]+=(bTilt+dtl-st.ct[i])*kk;
     f.values.Pan=Math.max(0,Math.min(255,Math.round(st.cp[i])));f.values.Tilt=Math.max(0,Math.min(255,Math.round(st.ct[i])));
   }
 };
 const sel=document.getElementById('asStyleSel');if(sel)sel.value=A.style;
+{const g=document.getElementById('asGate'),v=document.getElementById('asVel');if(g){g.value=gateV;A.setGate(gateV)}if(v){v.value=velV;A.setVel(velV)}}
 })();
 </script>
 </body>
