@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BARRIOS PRO - Controlador de Iluminación DMX</title>
-<meta name="barrios-version" content="7.1.0">
+<meta name="barrios-version" content="7.1.1">
 <style>
 :root{
   --bg:#0b0f17;--bg2:#151d2b;--bg3:#1e293b;--line:#324258;--txt:#e6eef8;--mut:#95a8c0;
@@ -72,7 +72,7 @@ input[type=text],input[type=number],select{background:#111926;border:1px solid #
 <body>
 <div id="app">
 <header class="topbar">
-  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.1.0</div></div>
+  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.1.1</div></div>
   <div class="topbtns">
     <button onclick="openTool('Nuevo Show')">📄 Nuevo</button>
     <button onclick="openTool('Abrir Show')">📂 Abrir</button>
@@ -3824,7 +3824,7 @@ const vertY=(r,x,z)=>{const w0=[r.o[0]-x,r.o[1],r.o[2]-z],b=r.d[1],d=dot(r.d,w0)
 const dSeg2=(px,py,ax,ay,bx,by)=>{const dx=bx-ax,dy=by-ay,l2=dx*dx+dy*dy;let t=l2?((px-ax)*dx+(py-ay)*dy)/l2:0;t=Math.max(0,Math.min(1,t));return Math.hypot(px-(ax+dx*t),py-(ay+dy*t))};
 const handlesOf=s=>s.kind==='tower'?[{k:'top',p:s.b}]:[{k:'a',p:s.a},{k:'b',p:s.b}];
 const fxPos=i=>{const p=getFixturePos3D(i,state.fixtures.length);return[p.x,p.y,p.z]};
-E.fxScreen=id=>{const i=state.fixtures.findIndex(f=>f.id===id);if(i<0)return null;const p=fxPos(i),s=toS([p[0],p[1]-hangOf(state.fixtures[i],p),p[2]]);return s&&{x:s[0],y:s[1]}};
+window.BARRIOS_E3D=E;E.fxScreen=id=>{const i=state.fixtures.findIndex(f=>f.id===id);if(i<0)return null;const p=fxPos(i),s=toS([p[0],p[1]-hangOf(state.fixtures[i],p),p[2]]);return s&&{x:s[0],y:s[1]}};
 E.trScreen=(id,w)=>{const s=trussSegments().find(q=>q.id===id);if(!s)return null;const p=w==='a'?s.a:w==='b'?s.b:w==='top'?s.b:mul(add(s.a,s.b),.5),r=toS(p);return r&&{x:r[0],y:r[1]}};
 function pick(ex,ey){
 const segs=trussSegments(),sel=E.selT&&segs.find(s=>s.id===E.selT);
@@ -3875,7 +3875,24 @@ const dx=a.which==='a'?o[0]-nx:nx-o[0],dz=a.which==='a'?o[2]-nz:nz-o[2],L=Math.h
 s.len=Math.min(40,L);s.rot=((Math.atan2(dz,dx)*180/Math.PI)%360+360)%360;s.x=(nx+o[0])/2;s.z=(nz+o[2])/2}}}
 function endAct(){const a=E.act;E.act=null;E.snapHit=null;if(a&&a.moved){save()}}
 cv.setAttribute('tabindex','0');cv.style.outline='none';
-cv.addEventListener('contextmenu',e=>e.preventDefault());
+/* ---- menú clic derecho: borrar estructura / luz ---- */
+const cm=document.createElement('div');cm.id='cm3d';cm.style.cssText='position:fixed;z-index:100000;display:none;min-width:210px;background:#111926;border:1px solid #3a4b63;border-radius:8px;padding:4px;box-shadow:0 8px 24px rgba(0,0,0,.6);font:13px Segoe UI,Arial,sans-serif;color:#e6eef8';document.body.appendChild(cm);
+const cmCss=document.createElement('style');cmCss.textContent='#cm3d .t{padding:4px 10px;font-size:11px;color:#f5c400;border-bottom:1px solid #26344a;margin-bottom:3px}#cm3d button{display:block;width:100%;text-align:left;background:none;border:0;color:#e6eef8;padding:7px 10px;border-radius:5px;cursor:pointer;font-size:13px}#cm3d button:hover{background:#22334d}#cm3d button.d{color:#ff8a98}#cm3d button.d:hover{background:#5a1c27}';document.head.appendChild(cmCss);
+function cmClose(){cm.style.display='none'}
+function cmOpen(x,y,title,items){cm.innerHTML='';const t=document.createElement('div');t.className='t';t.textContent=title;cm.appendChild(t);
+items.forEach(it=>{const b=document.createElement('button');b.textContent=it[0];if(it[2])b.className='d';b.onclick=()=>{cmClose();it[1]()};cm.appendChild(b)});
+cm.style.display='block';const w=cm.offsetWidth,h=cm.offsetHeight;cm.style.left=Math.min(x,innerWidth-w-6)+'px';cm.style.top=Math.min(y,innerHeight-h-6)+'px'}
+function delFixtures(ids){if(ids.length>=state.fixtures.length){notify('Debe quedar al menos 1 luz');return}
+state.fixtures=state.fixtures.filter(f=>!ids.includes(f.id));state.selected=state.selected.filter(x=>!ids.includes(x));if(!state.selected.length)state.selected=[state.fixtures[0].id];
+state.groups.forEach(g=>{g.ids=g.ids.filter(x=>!ids.includes(x))});save();renderMain();notify(ids.length+' luz(es) borrada(s)')}
+function delTruss(id){if(state.venue.trussType!=='Libre')convertToFreeTrusses(true);deleteFreeTruss(id);if(E.selT===id)E.selT=null;notify('Estructura borrada (Ctrl+Z para deshacer)')}
+let rc0=null;cv.addEventListener('mousedown',e=>{if(e.button===2)rc0=[e.clientX,e.clientY]},true);
+cv.addEventListener('contextmenu',e=>{e.preventDefault();if(rc0&&Math.hypot(e.clientX-rc0[0],e.clientY-rc0[1])>5)return;const r=cv.getBoundingClientRect(),h=pick(e.clientX-r.left,e.clientY-r.top);if(!h||h.type==='handle'){cmClose();return}
+if(h.type==='truss'){E.selT=h.id;const sg=trussSegments().find(q=>q.id===h.id),nm=(sg&&sg.label)||h.id;
+cmOpen(e.clientX,e.clientY,'Estructura · '+nm,[['🗑 Borrar estructura',()=>delTruss(h.id),1],['⧉ Duplicar',()=>{if(state.venue.trussType!=='Libre')convertToFreeTrusses(true);const c=duplicateFreeTruss(h.id);if(c)E.selT=c.id}],['Cancelar',()=>{}]])}
+else if(h.type==='fixture'){if(!state.selected.includes(h.id))selectFixture(h.id,{});E.selT=null;const ids=state.selected.slice(),f=state.fixtures.find(q=>q.id===h.id);
+cmOpen(e.clientX,e.clientY,'Luz '+h.id+' · '+(f?f.name:''),[[ids.length>1?'🗑 Borrar '+ids.length+' luces seleccionadas':'🗑 Borrar esta luz',()=>delFixtures(ids),1],['Cancelar',()=>{}]])}});
+document.addEventListener('mousedown',e=>{if(!cm.contains(e.target))cmClose()},true);window.addEventListener('keydown',e=>{if(e.key==='Escape')cmClose()},true);cv.addEventListener('wheel',cmClose,{passive:true});
 cv.addEventListener('mousedown',e=>{cv.focus();const r=cv.getBoundingClientRect(),ex=e.clientX-r.left,ey=e.clientY-r.top;
 if(e.button===0&&!e.shiftKey){const h=pick(ex,ey);if(h){startAct(h,e,ex,ey);return}}
 drag={x:e.clientX,y:e.clientY,pan:e.button>0||e.shiftKey,moved:false,btn:e.button};cv.style.cursor='grabbing'});
