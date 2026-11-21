@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BARRIOS PRO - Controlador de Iluminación DMX</title>
-<meta name="barrios-version" content="7.7.0">
+<meta name="barrios-version" content="7.8.0">
 <style>
 :root{
   --bg:#0b0f17;--bg2:#151d2b;--bg3:#1e293b;--line:#324258;--txt:#e6eef8;--mut:#95a8c0;
@@ -72,7 +72,7 @@ input[type=text],input[type=number],select{background:#111926;border:1px solid #
 <body>
 <div id="app">
 <header class="topbar">
-  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.7.0</div></div>
+  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.8.0</div></div>
   <div class="topbtns">
     <button onclick="openTool('Nuevo Show')">📄 Nuevo</button>
     <button onclick="openTool('Abrir Show')">📂 Abrir</button>
@@ -241,7 +241,12 @@ input[type=text],input[type=number],select{background:#111926;border:1px solid #
         <button data-qfx="rainbow">🌈 Arcoíris</button>
         <button data-qfx="random">✣ Aleatorio</button>
         <button id="fxAudioSyncBtn" onclick="toggleAudioSync()">🎤 Audio</button>
+        <button id="fxAudioSelBtn" onclick="audioPicker()" title="Elegir entrada de audio">⚙ Entrada de audio</button>
       </div>
+      <div class="qfx-strobe" style="margin-top:4px"><b style="color:var(--gold)">⚡ Flash:</b>
+        <select id="flashModeSel" style="flex:1" onchange="state.flashMode=this.value;save();if(!activeEffects.has('flash'))toggleQuickEffect('flash')">
+          <option value="classic">Clásico (golpe seco)</option><option value="double">Doble</option><option value="triple">Triple</option><option value="fade">Fade (se apaga suave)</option><option value="alt">Alterno (pares/impares)</option><option value="random">Aleatorio (luces al azar)</option><option value="chase">Secuencia (una tras otra)</option><option value="rapid">Ráfaga rápida</option><option value="blink">Parpadeo lento</option>
+        </select></div>
       <div class="qfx-strobe">
         <b style="color:var(--gold)">Strobe:</b>
         <input id="quickStrobeRange" type="range" min="0" max="255" value="0" style="flex:1">
@@ -2064,8 +2069,18 @@ function runEffectsEngine(now) {
         f.values.Dimmer = (idx === activeIdx || idx === (activeIdx + 1) % state.fixtures.length) ? 255 : 15;
       }
       if (activeEffects.has('flash')) {
-        const hitPhase = (pDim * 2.4) % (Math.PI * 2);
-        f.values.Dimmer = hitPhase < 0.7 ? 255 : 0;
+        const raw=pDim*2.4, hitPhase = raw % (Math.PI * 2), t=hitPhase/(Math.PI*2), cyc=Math.floor(raw/(Math.PI*2)), n=Math.max(1,state.fixtures.length);
+        const fm=state.flashMode||'classic';let on=0;
+        if(fm==='classic')on=t<0.11?255:0;
+        else if(fm==='double')on=(t<0.07||(t>0.17&&t<0.24))?255:0;
+        else if(fm==='triple')on=(t<0.06||(t>0.14&&t<0.2)||(t>0.28&&t<0.34))?255:0;
+        else if(fm==='fade')on=Math.round(255*Math.pow(Math.max(0,1-t*2.2),2));
+        else if(fm==='alt')on=(t<0.14&&((idx+cyc)%2===0))?255:0;
+        else if(fm==='random'){const h=Math.sin((cyc+1)*12.9898+idx*78.233)*43758.5453;on=(t<0.12&&(h-Math.floor(h))>0.5)?255:0}
+        else if(fm==='chase'){on=(((t-idx/n)%1+1)%1)<0.16?255:0}
+        else if(fm==='rapid')on=((raw*5)%(Math.PI*2))<Math.PI?255:0;
+        else if(fm==='blink')on=t<0.5?255:0;
+        f.values.Dimmer=on;
       }
       if (activeEffects.has('rainbow')) {
         const hue = (pDim * 0.7) % (Math.PI * 2);
@@ -4496,6 +4511,69 @@ document.addEventListener('fullscreenchange',()=>{const m=document.getElementByI
 (function(){const o=window.toggleQuickEffect;if(typeof o!=='function')return;
 window.toggleQuickEffect=function(fx){const was=(typeof activeEffects!=='undefined')&&activeEffects.has(fx);const r=o.apply(this,arguments);
  try{if(fx!=='stopall'&&!was&&activeEffects.has(fx)&&(state.effectSize||0)<=0&&['circle','fig8','sweep','tiltwave','mirror','sine','pulse','random'].includes(fx)){setEffectSize(100);save();notify('El tamaño del efecto (Size FX) estaba en 0%: lo puse en 100% para que se vea')}}catch(e){}return r}})();
+</script>
+
+<script>
+/* ===== 7.8 · AUDIO FX robusto + selector de entrada ===== */
+(function(){
+const LS='barrios_audio_dev';
+const g=()=>{try{return localStorage.getItem(LS)||''}catch(e){return''}};
+let meter=null,silentSince=0;
+function setBtn(txt){const b=document.getElementById('fxAudioSyncBtn');if(b)b.textContent=txt}
+async function begin(stream,label){
+  audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  try{await audioCtx.resume()}catch(e){}
+  const src=audioCtx.createMediaStreamSource(stream);
+  analyser=audioCtx.createAnalyser();analyser.fftSize=512;analyser.smoothingTimeConstant=0.72;src.connect(analyser);
+  audioDataArray=new Uint8Array(analyser.frequencyBinCount);micStream=stream;audioActive=true;
+  bassAvg=0.25;midAvg=0.2;highAvg=0.15;updateAudioUI();silentSince=Date.now();
+  notify('🎤 Audio FX ACTIVO'+(label?' ('+label+')':''));
+  clearInterval(meter);
+  meter=setInterval(()=>{
+    if(!audioActive){clearInterval(meter);setBtn('🎤 Audio');return}
+    try{if(audioCtx.state==='suspended')audioCtx.resume()}catch(e){}
+    const lv=Math.max(bassEnergy,midEnergy,highEnergy),k=Math.round(lv*6);
+    setBtn('🎤 '+'▮'.repeat(k)+'▯'.repeat(6-k));
+    if(lv>0.04)silentSince=Date.now();
+    else if(Date.now()-silentSince>4000){silentSince=Date.now();notify('⚠ No llega sonido: tocá "⚙ Entrada de audio" y elegí otra entrada (mezcla estéreo / línea / micrófono)')}
+  },120);
+}
+window.toggleAudioSync=async function(){
+  if(audioActive){stopAudioSync();clearInterval(meter);setBtn('🎤 Audio');notify('Audio FX apagado');return}
+  const dev=g();
+  const base={echoCancellation:false,noiseSuppression:false,autoGainControl:false};
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:dev?Object.assign({deviceId:{exact:dev}},base):base,video:false});
+    await begin(stream,(stream.getAudioTracks()[0]||{}).label||'');
+  }catch(err){
+    if(dev){try{localStorage.removeItem(LS)}catch(e){}}
+    failModal(err);
+  }
+};
+function failModal(err){
+  const n=(err&&err.name)||'';
+  const why=(n==='NotAllowedError'||n==='SecurityError')?'Windows o el programa no dieron permiso al micrófono. Abrí <b>Configuración de Windows → Privacidad → Micrófono</b> y activá "Permitir que las aplicaciones de escritorio accedan al micrófono".':(n==='NotFoundError'||n==='OverconstrainedError')?'No se encontró ninguna entrada de audio. Conectá un micrófono, o activá "Mezcla estéreo" en Windows (Sonido → Grabación).':'No se pudo abrir la entrada de audio ('+(n||'error')+').';
+  openModal('🎤 Audio FX',`<div style="padding:10px;max-width:520px"><p style="margin:0 0 10px;font-size:13px">${why}</p>
+  <div style="display:flex;flex-direction:column;gap:8px"><button class="gold" onclick="audioPicker()">⚙ Elegir otra entrada de audio</button><button onclick="audioScreen()">🖥 Usar el sonido de la PC (compartir pantalla con audio)</button><button onclick="closeModal()">Cerrar</button></div></div>`);
+}
+window.audioScreen=async function(){
+  try{const st=await navigator.mediaDevices.getDisplayMedia({audio:true,video:true});
+    if(!st.getAudioTracks().length){st.getTracks().forEach(t=>t.stop());notify('No se compartió audio. Marcá "Compartir audio" al elegir.');return}
+    st.getVideoTracks().forEach(t=>t.stop());closeModal();await begin(new MediaStream(st.getAudioTracks()),'sonido de la PC');
+  }catch(e){notify('No se pudo capturar el sonido de la PC en este programa. Usá una entrada de audio (⚙).')}
+};
+window.audioPicker=async function(){
+  let devs=[];
+  try{const t=await navigator.mediaDevices.getUserMedia({audio:true});t.getTracks().forEach(x=>x.stop())}catch(e){}
+  try{devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='audioinput')}catch(e){}
+  const cur=g();
+  openModal('⚙ Entrada de audio',`<div style="padding:10px;max-width:520px"><p style="margin:0 0 8px;font-size:12px;color:#9fb0c3">Elegí de dónde escucha el programa la música. Para tomar el sonido de la PC elegí "Mezcla estéreo" (si no aparece, activala en Windows → Sonido → Grabación).</p>
+  <div style="display:flex;flex-direction:column;gap:6px;max-height:44vh;overflow:auto">${devs.length?devs.map(d=>`<button class="${d.deviceId===cur?'gold':''}" style="text-align:left" onclick="audioUse('${d.deviceId.replace(/'/g,'')}')">${(d.label||'Entrada '+d.deviceId.slice(0,6)).replace(/[<&]/g,'')}</button>`).join(''):'<p style="color:#ffb3b3">No hay entradas de audio disponibles o falta el permiso del micrófono.</p>'}</div>
+  <div style="margin-top:10px;display:flex;gap:8px"><button onclick="audioUse('')">Predeterminada</button><button onclick="closeModal()">Cerrar</button></div></div>`);
+};
+window.audioUse=function(id){try{localStorage.setItem(LS,id)}catch(e){}closeModal();if(audioActive){stopAudioSync();clearInterval(meter)}setTimeout(()=>toggleAudioSync(),150)};
+const sel=document.getElementById('flashModeSel');if(sel)sel.value=state.flashMode||'classic';
+})();
 </script>
 </body>
 </html>
