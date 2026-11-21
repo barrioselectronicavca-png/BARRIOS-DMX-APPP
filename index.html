@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BARRIOS PRO - Controlador de Iluminación DMX</title>
-<meta name="barrios-version" content="7.1.1">
+<meta name="barrios-version" content="7.2.0">
 <style>
 :root{
   --bg:#0b0f17;--bg2:#151d2b;--bg3:#1e293b;--line:#324258;--txt:#e6eef8;--mut:#95a8c0;
@@ -72,13 +72,13 @@ input[type=text],input[type=number],select{background:#111926;border:1px solid #
 <body>
 <div id="app">
 <header class="topbar">
-  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.1.1</div></div>
+  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.2.0</div></div>
   <div class="topbtns">
     <button onclick="openTool('Nuevo Show')">📄 Nuevo</button>
     <button onclick="openTool('Abrir Show')">📂 Abrir</button>
-    <button onclick="document.getElementById('jsonShowFile').click()">📥 Cargar JSON</button>
+    <button onclick="document.getElementById('jsonShowFile').click()">📥 Cargar Show</button>
     <input id="jsonShowFile" type="file" accept=".json,application/json" style="display:none" onchange="loadShowJSON(event)">
-    <button onclick="saveShow()">💾 Guardar</button>
+    <button onclick="saveShow()">💾 Guardar Show</button>
     <button id="topDmxBtn" onclick="openTool('DMX Output')">🔌 DMX Output</button>
     <button onclick="openTool('Salón / Truss')">⚙ Salón / Truss</button>
     <button id="topAudioBtn" onclick="toggleAudioSync()">🎤 Audio FX: OFF</button>
@@ -1550,6 +1550,7 @@ function renderTab(){
 
 function renderPtTab(){
   let t=state.ptTab,el=$('#ptBody'),p=primary();
+  if(!p){el.innerHTML='<div style="padding:18px;color:#9fb0c3;text-align:center">No hay luces en el show.<br>Agregalas desde <b>Patch</b> o <b>Fixture</b>.</div>';return}
   if(t==='Pan/Tilt'){
     el.innerHTML=`<div class="ptgrid"><div class="pad" id="ptPad"><div class="dot" id="ptDot"></div></div><div class="readouts">
       <div class="box">Pan<input id="pan" type="number" min="0" max="255" value="${p.basePan ?? p.values.Pan}"></div>
@@ -3060,13 +3061,9 @@ function addChinaPresetFixture() {
 }
 
 function removeFixture(id) {
-  if (state.fixtures.length <= 1) {
-    notify('Debe quedar al menos 1 fixture activo');
-    return;
-  }
   state.fixtures = state.fixtures.filter(f => f.id !== id);
   state.selected = state.selected.filter(x => x !== id);
-  if (!state.selected.length) state.selected = [state.fixtures[0].id];
+  if (!state.selected.length && state.fixtures.length) state.selected = [state.fixtures[0].id];
   state.groups.forEach(g => { g.ids = g.ids.filter(x => x !== id); });
   save();
   renderMain();
@@ -3882,8 +3879,8 @@ function cmClose(){cm.style.display='none'}
 function cmOpen(x,y,title,items){cm.innerHTML='';const t=document.createElement('div');t.className='t';t.textContent=title;cm.appendChild(t);
 items.forEach(it=>{const b=document.createElement('button');b.textContent=it[0];if(it[2])b.className='d';b.onclick=()=>{cmClose();it[1]()};cm.appendChild(b)});
 cm.style.display='block';const w=cm.offsetWidth,h=cm.offsetHeight;cm.style.left=Math.min(x,innerWidth-w-6)+'px';cm.style.top=Math.min(y,innerHeight-h-6)+'px'}
-function delFixtures(ids){if(ids.length>=state.fixtures.length){notify('Debe quedar al menos 1 luz');return}
-state.fixtures=state.fixtures.filter(f=>!ids.includes(f.id));state.selected=state.selected.filter(x=>!ids.includes(x));if(!state.selected.length)state.selected=[state.fixtures[0].id];
+function delFixtures(ids){
+state.fixtures=state.fixtures.filter(f=>!ids.includes(f.id));state.selected=state.selected.filter(x=>!ids.includes(x));if(!state.selected.length&&state.fixtures.length)state.selected=[state.fixtures[0].id];
 state.groups.forEach(g=>{g.ids=g.ids.filter(x=>!ids.includes(x))});save();renderMain();notify(ids.length+' luz(es) borrada(s)')}
 function delTruss(id){if(state.venue.trussType!=='Libre')convertToFreeTrusses(true);deleteFreeTruss(id);if(E.selT===id)E.selT=null;notify('Estructura borrada (Ctrl+Z para deshacer)')}
 let rc0=null;cv.addEventListener('mousedown',e=>{if(e.button===2)rc0=[e.clientX,e.clientY]},true);
@@ -4286,7 +4283,7 @@ const origUA=window.updateAddr;
 window.updateAddr=function(id,v){const f=state.fixtures.find(x=>x.id===id);if(f){let a=Math.round(+v);if(!isFinite(a)||a<1)a=1;if(a>512)a=512;f.addr=a;if(a+f.ch-1>512)say('Ojo: ese equipo se pasa del canal 512',true)}save();renderMain()};
 /* copia de seguridad automática (2 últimas) */
 try{const cur=localStorage.getItem(STORAGE_KEY);if(cur){const b1=localStorage.getItem('barrios_backup_1');if(b1!==cur){localStorage.setItem('barrios_backup_2',b1||cur);localStorage.setItem('barrios_backup_1',cur)}}}catch(e){}
-window.addEventListener('beforeunload',()=>{if(C.hl)C.toggleHL(false);if(C.bo){state.master=preMaster}try{save()}catch(e){}});
+window.addEventListener('beforeunload',()=>{if(window.__noUnloadSave)return;if(C.hl)C.toggleHL(false);if(C.bo){state.master=preMaster}try{save()}catch(e){}});
 renderCueTable();renderFixtures();C.tap.bpmInit=1;const bt=$('#btnTap');if(bt)bt.textContent='TAP '+state.bpm;
 })();
 
@@ -4348,6 +4345,65 @@ L.openDialog=function(){const st=L.status==='licensed'?'<b style="color:#22df67"
 const upd=document.getElementById('btnUpd');
 if(upd){const b=document.createElement('button');b.id='btnLic';b.type='button';b.style.fontWeight='700';b.onclick=()=>L.openDialog();upd.parentNode.insertBefore(b,upd)}
 evaluate().then(render);setInterval(()=>evaluate().then(render),60000);
+})();
+
+</script>
+<script>
+/* ===== BARRIOS 7.2 · NUEVO / ABRIR / GUARDAR SHOW ===== */
+(function(){
+'use strict';
+const LIST='barrios_shows_v1',MAX=25;
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const rd=()=>{try{const l=JSON.parse(localStorage.getItem(LIST)||'[]');return Array.isArray(l)?l:[]}catch(e){return[]}};
+const wr=l=>{try{localStorage.setItem(LIST,JSON.stringify(l));return true}catch(e){return false}};
+const fmt=t=>{const d=new Date(t),p=n=>String(n).padStart(2,'0');return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()+' '+p(d.getHours())+':'+p(d.getMinutes())};
+let lastName='';try{lastName=localStorage.getItem('barrios_last_show_name')||''}catch(e){}
+function putShow(name,silent){const l=rd().filter(x=>x.name!==name);l.unshift({name:name,t:Date.now(),data:JSON.stringify(state)});
+  while(l.length>MAX)l.pop();const ok=wr(l);if(!ok&&!silent)alert('No hay espacio para guardar más shows en el programa. Borrá alguno viejo o usá "Guardar como archivo".');return ok}
+function download(name){try{const blob=new Blob([JSON.stringify(state,null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=name.replace(/[\\/:*?"<>|]+/g,'_')+'.json';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}catch(e){}}
+function applyShow(obj){
+  if(!obj||typeof obj!=='object'||Array.isArray(obj)||!Array.isArray(obj.fixtures))throw new Error('El archivo no es un show BARRIOS válido.');
+  if(!Array.isArray(obj.groups))obj.groups=[];if(!Array.isArray(obj.cues))obj.cues=[];if(!Array.isArray(obj.presets))obj.presets=[];
+  Object.keys(obj).forEach(k=>{state[k]=obj[k]});
+  if(!state.venue)state.venue={width:16,depth:12,height:6.5,trussType:'Puente Frontal',trussHeight:5.2,trussWidth:11,stageWidth:8,stageDepth:4,stageHeight:0.8,customTrusses:[]};
+  if(!Array.isArray(state.venue.customTrusses))state.venue.customTrusses=[];
+  if(!state.motion)state.motion={panSpeed:35,tiltSpeed:35,phaseDeg:45};
+  if(!Array.isArray(state.selected)||!state.selected.length)state.selected=state.fixtures.length?[state.fixtures[0].id]:[];
+  state.activeGroupId=null;activeEffects.clear();
+  if(Array.isArray(obj.activeEffectsSaved))obj.activeEffectsSaved.forEach(x=>activeEffects.add(x));
+  save();renderMain();try{if(window.B3D&&B3D.refresh)B3D.refresh()}catch(e){}}
+window.applyShow=applyShow;
+/* ---- Guardar ---- */
+window.saveShow=function(){
+  openModal('💾 Guardar Show',`<div style="padding:10px;max-width:520px"><p style="margin:0 0 6px;color:#9fb0c3;font-size:13px">Poné un nombre para este show:</p>
+  <input id="shName" value="${esc(lastName||'Mi show')}" style="width:100%;box-sizing:border-box;padding:9px;font-size:15px;background:#070c14;color:#fff;border:1px solid #2b3b52;border-radius:8px">
+  <label style="display:flex;gap:8px;align-items:center;margin:10px 0;font-size:13px"><input type="checkbox" id="shFile"> También descargar un archivo .json (para llevar en el pendrive)</label>
+  <div style="display:flex;gap:8px"><button class="gold" onclick="BARRIOS72.doSave()">💾 Guardar</button><button onclick="closeModal()">Cancelar</button></div></div>`);
+  setTimeout(()=>{const i=document.getElementById('shName');if(i){i.focus();i.select();i.onkeydown=e=>{if(e.key==='Enter')BARRIOS72.doSave()}}},50)};
+const B=window.BARRIOS72={};
+B.doSave=function(){const n=(document.getElementById('shName').value||'').trim()||'Mi show',f=document.getElementById('shFile').checked;
+  save();if(!putShow(n))return;lastName=n;try{localStorage.setItem('barrios_last_show_name',n)}catch(e){}if(f)download(n);closeModal();notify('Show "'+n+'" guardado')};
+/* ---- Abrir ---- */
+function openList(){const l=rd();
+  openModal('📂 Abrir Show',`<div style="padding:10px;max-width:620px"><div style="max-height:46vh;overflow:auto;border:1px solid #2b3b52;border-radius:8px">`+
+  (l.length?'<table style="width:100%;border-collapse:collapse;font-size:13px">'+l.map((x,i)=>`<tr style="border-bottom:1px solid #1d2a3d"><td style="padding:8px"><b>${esc(x.name)}</b><br><small style="color:#9fb0c3">${fmt(x.t)}</small></td><td style="text-align:right;padding:8px;white-space:nowrap"><button class="gold" onclick="BARRIOS72.open(${i})">Abrir</button> <button onclick="BARRIOS72.dl(${i})" title="Descargar archivo">⬇</button> <button style="background:#4a1c24;border-color:#8f3242;color:#fff" onclick="BARRIOS72.del(${i})" title="Borrar">✕</button></td></tr>`).join('')+'</table>'
+  :'<p style="padding:14px;color:#9fb0c3;margin:0">Todavía no guardaste ningún show. Usá <b>Guardar Show</b>.</p>')+
+  `</div><div style="margin-top:10px;display:flex;gap:8px"><button onclick="document.getElementById('jsonShowFile').click();closeModal()">📥 Cargar desde archivo…</button><button onclick="closeModal()">Cerrar</button></div></div>`)}
+B.open=function(i){const x=rd()[i];if(!x)return;if(!confirm('Se va a reemplazar el show actual por "'+x.name+'".\n(Si no guardaste el actual, se pierde). ¿Abrir?'))return;
+  try{applyShow(JSON.parse(x.data));lastName=x.name;closeModal();notify('Show "'+x.name+'" abierto')}catch(e){alert('No se pudo abrir: '+e.message)}};
+B.dl=function(i){const x=rd()[i];if(!x)return;try{const o=JSON.parse(x.data);const blob=new Blob([JSON.stringify(o,null,1)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=x.name.replace(/[\\/:*?"<>|]+/g,'_')+'.json';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}catch(e){}};
+B.del=function(i){const l=rd(),x=l[i];if(!x)return;if(!confirm('¿Borrar el show "'+x.name+'" de la lista? No se puede deshacer.'))return;l.splice(i,1);wr(l);openList()};
+/* ---- Nuevo ---- */
+function newShow(){openModal('📄 Nuevo Show',`<div style="padding:10px;max-width:520px"><p style="margin:0 0 10px;font-size:13px;color:#9fb0c3">Antes de empezar, el show actual se guarda solo en la lista de <b>Abrir</b> como "Copia automática", así no perdés nada.</p>
+  <div style="display:flex;flex-direction:column;gap:8px"><button class="gold" style="padding:10px" onclick="BARRIOS72.fresh('empty')">📄 Show vacío (sin luces, las agregás vos)</button>
+  <button style="padding:10px" onclick="BARRIOS72.fresh('demo')">✨ Show de ejemplo (luces de demostración)</button><button onclick="closeModal()">Cancelar</button></div></div>`)}
+B.fresh=function(kind){putShow('Copia automática '+fmt(Date.now()),true);
+  if(kind==='demo'){window.__noUnloadSave=true;try{localStorage.removeItem(STORAGE_KEY)}catch(e){}location.reload();return}
+  state.fixtures=[];state.groups=buildDefaultGroups([]);state.cues=[];state.selected=[];state.activeGroupId=null;state.activeSceneId=null;activeEffects.clear();
+  save();renderMain();try{if(window.B3D&&B3D.refresh)B3D.refresh()}catch(e){}closeModal();notify('Show nuevo vacío. Agregá luces en Patch / Fixture.')};
+const origTool=window.openTool;
+window.openTool=function(name){if(name==='Nuevo Show')return newShow();if(name==='Abrir Show')return openList();return origTool.apply(this,arguments)};
 })();
 
 </script>
