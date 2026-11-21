@@ -72,7 +72,7 @@ input[type=text],input[type=number],select{background:#111926;border:1px solid #
 <body>
 <div id="app">
 <header class="topbar">
-  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v6.2.0</div></div>
+  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.1.0</div></div>
   <div class="topbtns">
     <button onclick="openTool('Nuevo Show')">📄 Nuevo</button>
     <button onclick="openTool('Abrir Show')">📂 Abrir</button>
@@ -4237,8 +4237,8 @@ const css=document.createElement('style');css.textContent=`#app{grid-template-ro
 @keyframes bo70{to{filter:brightness(1.6)}}.console70 .warnBtn{background:#5a3b0b;border-color:#e6a117;color:#ffd27a;font-weight:700}
 .console70 .cueNow{position:relative;min-width:130px;max-width:190px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;font-size:11px;color:#e6eef8;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;background:#0b1220}
 .console70 .cueNow i{position:absolute;left:0;bottom:0;height:3px;width:0;background:var(--gold)}
-.console70 #cmdLine{flex:1;min-width:120px;background:#070c14;color:#cfe4ff;border:1px solid var(--line);border-radius:6px;padding:5px 8px;font:12px Consolas,monospace}
-.console70 #cmdOut{font-size:11px;max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}`;document.head.appendChild(css);
+.console70 #cmdLine{flex:1;min-width:60px;background:#070c14;color:#cfe4ff;border:1px solid var(--line);border-radius:6px;padding:5px 8px;font:12px Consolas,monospace}
+.console70 #cmdOut{font-size:11px;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}`;document.head.appendChild(css);
 $('#btnGo').onclick=()=>C.next();$('#btnBack').onclick=()=>C.back();$('#btnBO').onclick=()=>C.toggleBO();$('#btnClr').onclick=()=>C.clear();$('#btnHL').onclick=()=>C.toggleHL();
 $('#btnTap').onclick=()=>C.tap();$('#btnMidi').onclick=()=>C.openMidi();$('#btnExp').onclick=()=>C.exportShow();$('#patchWarn').onclick=()=>{if(confirm('Se reordenan las direcciones DMX desde 1 sin solaparse. ¿Continuar?'))C.autopatch()};
 const cl=$('#cmdLine');
@@ -4310,7 +4310,7 @@ const css=document.createElement('style');css.textContent=`#licWall{position:fix
 #licWall .box,.licBox{width:min(560px,92vw);background:#111926;border:1px solid #2b3b52;border-radius:12px;padding:22px}
 #licWall h2,.licBox h2{margin:0 0 6px;color:#f5b800}#licWall code,.licBox code{display:block;font:700 20px Consolas,monospace;background:#070c14;border:1px solid #2b3b52;border-radius:8px;padding:10px;text-align:center;letter-spacing:1px;user-select:all}
 #licWall textarea,.licBox textarea{width:100%;height:78px;background:#070c14;color:#cfe4ff;border:1px solid #2b3b52;border-radius:8px;padding:8px;font:11px Consolas,monospace;box-sizing:border-box}
-.licMsg{min-height:18px;margin:6px 0;font-size:13px}#btnLic.warn{background:#5a3b0b;border-color:#e6a117;color:#ffd27a}`;document.head.appendChild(css);
+.licMsg{min-height:18px;margin:6px 0;font-size:13px}#btnLic.warn{background:#5a3b0b;border-color:#e6a117;color:#ffd27a}#btnLic{white-space:nowrap}`;document.head.appendChild(css);
 function body(){const id=machineId();return `<p style="margin:0 0 10px;color:#9fb0c3;font-size:13px">Para seguir usando el programa necesitás una licencia. Cada licencia sirve para una computadora.</p>
 <p style="margin:8px 0 4px;font-size:12px;color:#9fb0c3">Código de esta computadora (envialo a Electrónica Barrios):</p><code>${id}</code>
 <p style="margin:12px 0 4px;font-size:12px;color:#9fb0c3">Pegá acá tu clave de licencia:</p><textarea id="licKey" spellcheck="false"></textarea>
@@ -4328,8 +4328,8 @@ function render(){
   else if(w)w.remove()}
 L.openDialog=function(){const st=L.status==='licensed'?'<b style="color:#22df67">Licencia activa</b>'+(L.client?' · '+L.client.replace(/[<>&]/g,''):'')+(L.exp?' · vence '+L.exp:' · permanente'):'Modo demo: te quedan <b>'+L.days+' días</b> con todas las funciones.';
   openModal('🔑 Licencia','<div class="licBox" style="border:0">'+(L.status==='licensed'?'<p style="font-size:14px">'+st+'</p><p style="color:#9fb0c3;font-size:12px">Código de esta PC: <b>'+machineId()+'</b></p>':'<p style="font-size:14px;margin:0 0 8px">'+st+'</p>'+body())+'</div>')};
-const bar=document.querySelector('.console70');
-if(bar){const b=document.createElement('button');b.id='btnLic';b.onclick=()=>L.openDialog();bar.appendChild(b)}
+const upd=document.getElementById('btnUpd');
+if(upd){const b=document.createElement('button');b.id='btnLic';b.type='button';b.style.fontWeight='700';b.onclick=()=>L.openDialog();upd.parentNode.insertBefore(b,upd)}
 evaluate().then(render);setInterval(()=>evaluate().then(render),60000);
 })();
 
