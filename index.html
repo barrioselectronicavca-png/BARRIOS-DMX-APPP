@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BARRIOS PRO - Controlador de Iluminación DMX</title>
-<meta name="barrios-version" content="7.5.0">
+<meta name="barrios-version" content="7.6.0">
 <style>
 :root{
   --bg:#0b0f17;--bg2:#151d2b;--bg3:#1e293b;--line:#324258;--txt:#e6eef8;--mut:#95a8c0;
@@ -72,7 +72,7 @@ input[type=text],input[type=number],select{background:#111926;border:1px solid #
 <body>
 <div id="app">
 <header class="topbar">
-  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.5.0</div></div>
+  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.6.0</div></div>
   <div class="topbtns">
     <button onclick="openTool('Nuevo Show')">📄 Nuevo</button>
     <button onclick="openTool('Abrir Show')">📂 Abrir</button>
@@ -3913,12 +3913,23 @@ const p=getFixturePos3D(i,total);c.customPos={x:Math.round((p.x+.5)*100)/100,y:p
 state.fixtures.push(c);state.groups.forEach(g=>{if(Array.isArray(g.ids)&&g.ids.includes(f.id))g.ids.push(c.id)});made.push(c)});
 if(!made.length)return;state.selected=made.map(q=>q.id);E.selT=null;save();renderMain();
 notify(made.length===1?'Luz copiada: nueva luz '+made[0].id+' en DMX '+made[0].addr:made.length+' luces copiadas con canales DMX nuevos')}
+const mkey=f=>[f.name,f.type,f.ch,(f.channelMap||[]).join(',')].join('|');
+function loadedModels(){const m=new Map();state.fixtures.forEach(f=>{const k=mkey(f);if(!m.has(k))m.set(k,{f:f,n:0});m.get(k).n++});return [...m.values()]}
+function addFromModel(tpl,x,z){const a=freeAddr(tpl.ch,state.fixtures);if(!a){notify('No queda lugar libre en el universo DMX (512 canales)');return}
+const c=JSON.parse(JSON.stringify(tpl));c.id=state.fixtures.reduce((m,q)=>Math.max(m,q.id),0)+1;c.addr=a;const v=state.venue,hw=v.width/2-.3,hd=v.depth/2-.3;
+c.customPos={x:Math.round(Math.max(-hw,Math.min(hw,x))*100)/100,y:c.type==='Par'?.15:.3,z:Math.round(Math.max(-hd,Math.min(hd,z))*100)/100};c.mount=null;
+state.fixtures.push(c);state.groups.forEach(g=>{if(Array.isArray(g.ids)&&g.ids.includes(tpl.id))g.ids.push(c.id)});
+state.selected=[c.id];E.selT=null;save();renderMain();notify('Luz agregada: '+c.name+' (luz '+c.id+', DMX '+c.addr+')')}
 function delFixtures(ids){
 state.fixtures=state.fixtures.filter(f=>!ids.includes(f.id));state.selected=state.selected.filter(x=>!ids.includes(x));if(!state.selected.length&&state.fixtures.length)state.selected=[state.fixtures[0].id];
 state.groups.forEach(g=>{g.ids=g.ids.filter(x=>!ids.includes(x))});save();renderMain();notify(ids.length+' luz(es) borrada(s)')}
 function delTruss(id){if(state.venue.trussType!=='Libre')convertToFreeTrusses(true);deleteFreeTruss(id);if(E.selT===id)E.selT=null;notify('Estructura borrada (Ctrl+Z para deshacer)')}
 let rc0=null;cv.addEventListener('mousedown',e=>{if(e.button===2)rc0=[e.clientX,e.clientY]},true);
-cv.addEventListener('contextmenu',e=>{e.preventDefault();if(rc0&&Math.hypot(e.clientX-rc0[0],e.clientY-rc0[1])>5)return;const r=cv.getBoundingClientRect(),h=pick(e.clientX-r.left,e.clientY-r.top);if(!h||h.type==='handle'){cmClose();return}
+cv.addEventListener('contextmenu',e=>{e.preventDefault();if(rc0&&Math.hypot(e.clientX-rc0[0],e.clientY-rc0[1])>5)return;const r=cv.getBoundingClientRect(),ex2=e.clientX-r.left,ey2=e.clientY-r.top,h=pick(ex2,ey2);
+if(h&&h.type==='handle'){cmClose();return}
+if(!h){const rr=rayAt(ex2,ey2),hp=hitY(rr,0),pt=hp?[hp[0],hp[2]]:[cam.t[0],cam.t[2]],ms=loadedModels();
+const items=ms.length?ms.slice(0,14).map(o=>['＋ '+o.f.name+' ('+o.f.ch+'ch)',()=>addFromModel(o.f,pt[0],pt[1])]):[['No hay luces cargadas (cargalas en Fixture)',()=>{}]];
+cmOpen(e.clientX,e.clientY,'Agregar luz acá',items);return}
 if(h.type==='truss'){E.selT=h.id;const sg=trussSegments().find(q=>q.id===h.id),nm=(sg&&sg.label)||h.id;
 cmOpen(e.clientX,e.clientY,'Estructura · '+nm,[['🗑 Borrar estructura',()=>delTruss(h.id),1],['⧉ Duplicar',()=>{if(state.venue.trussType!=='Libre')convertToFreeTrusses(true);const c=duplicateFreeTruss(h.id);if(c)E.selT=c.id}],['Cancelar',()=>{}]])}
 else if(h.type==='fixture'){if(!state.selected.includes(h.id))selectFixture(h.id,{});E.selT=null;const ids=state.selected.slice(),f=state.fixtures.find(q=>q.id===h.id);
