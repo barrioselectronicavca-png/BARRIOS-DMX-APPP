@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BARRIOS PRO - Controlador de Iluminación DMX</title>
-<meta name="barrios-version" content="7.4.0">
+<meta name="barrios-version" content="7.4.1">
 <style>
 :root{
   --bg:#0b0f17;--bg2:#151d2b;--bg3:#1e293b;--line:#324258;--txt:#e6eef8;--mut:#95a8c0;
@@ -72,7 +72,7 @@ input[type=text],input[type=number],select{background:#111926;border:1px solid #
 <body>
 <div id="app">
 <header class="topbar">
-  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.4.0</div></div>
+  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.4.1</div></div>
   <div class="topbtns">
     <button onclick="openTool('Nuevo Show')">📄 Nuevo</button>
     <button onclick="openTool('Abrir Show')">📂 Abrir</button>
@@ -4432,6 +4432,7 @@ function newShow(){openModal('📄 Nuevo Show',`<div style="padding:10px;max-wid
 B.fresh=function(kind){putShow('Copia automática '+fmt(Date.now()),true);
   if(kind==='demo'){window.__noUnloadSave=true;try{localStorage.removeItem(STORAGE_KEY)}catch(e){}location.reload();return}
   state.fixtures=[];state.groups=buildDefaultGroups([]);state.cues=[];state.selected=[];state.activeGroupId=null;state.activeSceneId=null;activeEffects.clear();
+  state.venue.trussType='Libre';state.venue.free=[];state.venue.customTrusses=[];try{if(window.BARRIOS_E3D)BARRIOS_E3D.selT=null}catch(e){}
   save();renderMain();try{if(window.B3D&&B3D.refresh)B3D.refresh()}catch(e){}closeModal();notify('Show nuevo vacío. Agregá luces en Patch / Fixture.')};
 const origTool=window.openTool;
 window.openTool=function(name){if(name==='Nuevo Show')return newShow();if(name==='Abrir Show')return openList();return origTool.apply(this,arguments)};
