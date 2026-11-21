@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BARRIOS PRO - Controlador de Iluminación DMX</title>
-<meta name="barrios-version" content="7.8.1">
+<meta name="barrios-version" content="7.9.0">
 <style>
 :root{
   --bg:#0b0f17;--bg2:#151d2b;--bg3:#1e293b;--line:#324258;--txt:#e6eef8;--mut:#95a8c0;
@@ -72,7 +72,7 @@ input[type=text],input[type=number],select{background:#111926;border:1px solid #
 <body>
 <div id="app">
 <header class="topbar">
-  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.8.1</div></div>
+  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.9.0</div></div>
   <div class="topbtns">
     <button onclick="openTool('Nuevo Show')">📄 Nuevo</button>
     <button onclick="openTool('Abrir Show')">📂 Abrir</button>
@@ -243,6 +243,10 @@ input[type=text],input[type=number],select{background:#111926;border:1px solid #
         <button id="fxAudioSyncBtn" onclick="toggleAudioSync()">🎤 Audio</button>
         <button id="fxAudioSelBtn" onclick="audioPicker()" title="Elegir entrada de audio">⚙ Entrada de audio</button>
       </div>
+      <div class="qfx-strobe" style="margin-top:4px"><b style="color:var(--gold)">🎤 Show:</b>
+        <select id="asStyleSel" style="flex:1" onchange="BARRIOS_AS&&BARRIOS_AS.setStyle(this.value)">
+          <option value="auto">AUTO · show completo (cambia solo)</option><option value="pulse">Pulso al bombo</option><option value="chase">Chase al ritmo</option><option value="alt">Alterno izq/der</option><option value="wave">Ola de luz</option><option value="burst">Strobe / Drop</option>
+        </select><span id="asInfo" style="min-width:70px;text-align:right;color:var(--gold);font-size:11px">—</span></div>
       <div class="qfx-strobe" style="margin-top:4px"><b style="color:var(--gold)">⚡ Flash:</b>
         <select id="flashModeSel" style="flex:1" onchange="state.flashMode=this.value;save();if(!activeEffects.has('flash'))toggleQuickEffect('flash')">
           <option value="classic">Clásico (golpe seco)</option><option value="double">Doble</option><option value="triple">Triple</option><option value="fade">Fade (se apaga suave)</option><option value="alt">Alterno (pares/impares)</option><option value="random">Aleatorio (luces al azar)</option><option value="chase">Secuencia (una tras otra)</option><option value="rapid">Ráfaga rápida</option><option value="blink">Parpadeo lento</option>
@@ -2089,7 +2093,7 @@ function runEffectsEngine(now) {
         f.values.Blue = Math.round((Math.sin(hue + 4.188) * 0.5 + 0.5) * 255);
       }
 
-      if (audioActive) {
+      if (audioActive && window.BARRIOS_AS) { BARRIOS_AS.fx(f, idx, isMovingHead, bPan, bTilt, sizeScale, hasMoveFx, now, dt); } else if (audioActive) {
         const audioDim = Math.max(40, Math.min(255, Math.round(50 + bassEnergy * 155 + beatPulse * 65)));
         f.values.Dimmer = audioDim;
         if (isMovingHead && !hasMoveFx) {
@@ -4573,6 +4577,68 @@ window.audioPicker=async function(){
 };
 window.audioUse=function(id){try{localStorage.setItem(LS,id)}catch(e){}closeModal();if(audioActive){stopAudioSync();clearInterval(meter)}setTimeout(()=>toggleAudioSync(),150)};
 const sel=document.getElementById('flashModeSel');if(sel)sel.value=state.flashMode||'classic';
+})();
+</script>
+
+<script>
+/* ===== 7.9 · AUDIO SHOW: ritmo, escenas, movimiento y drops ===== */
+(function(){
+const A=window.BARRIOS_AS={style:'auto'};
+const SC=['pulse','chase','alt','wave','burst'];const NAMES={pulse:'Pulso',chase:'Chase',alt:'Alterno',wave:'Ola',burst:'Strobe',calm:'Calma'};
+let st={beatN:0,lastBeat:0,ivs:[],bpm:0,kick:0,hue:0,sceneIdx:0,sceneBeat:0,burstUntil:0,lastDrop:0,eShort:0,eLong:0.15,energy:0,env:[],cp:[],ct:[],head:0,t:0,lastFrame:-1,calmT:0,highEnv:0,lastInfo:0,hiAvg:0.1};
+const fr=x=>x-Math.floor(x);
+function hsv(h,s,v){h=fr(h)*6;const i=Math.floor(h),f=h-i,p=v*(1-s),q=v*(1-s*f),t=v*(1-s*(1-f));
+  const m=[[v,t,p],[q,v,p],[p,v,t],[p,q,v],[t,p,v],[v,p,q]][i%6];return m.map(x=>Math.round(x*255))}
+A.setStyle=function(v){A.style=v;st.sceneBeat=0;try{localStorage.setItem('barrios_as_style',v)}catch(e){};if(typeof notify==='function')notify('Show de audio: '+(v==='auto'?'AUTO (cambia solo)':NAMES[v]))};
+try{const v=localStorage.getItem('barrios_as_style');if(v){A.style=v;const el=document.getElementById('asStyleSel');if(el)el.value=v}}catch(e){}
+function frame(now,dt){
+  st.t+=dt;const n=Math.max(1,state.fixtures.length);
+  const e=Math.min(1,bassEnergy*0.6+midEnergy*0.3+highEnergy*0.1);
+  st.energy+=(e-st.energy)*Math.min(1,dt*10);
+  st.eShort+=(e-st.eShort)*Math.min(1,dt*2.5);st.eLong+=(e-st.eLong)*Math.min(1,dt*0.15);
+  st.kick*=Math.exp(-dt*6.5);st.highEnv*=Math.exp(-dt*9);
+  const hiHit=highEnergy>st.hiAvg*1.55+0.08;st.hiAvg+=(highEnergy-st.hiAvg)*Math.min(1,dt*3);if(hiHit)st.highEnv=1;
+  /* golpe de bombo detectado por el motor de audio */
+  let beat=false;if(lastBeatTime!==st.lastBeat){beat=true;const iv=lastBeatTime-st.lastBeat;st.lastBeat=lastBeatTime;
+    if(iv>280&&iv<800){st.ivs.push(iv);if(st.ivs.length>10)st.ivs.shift();const o=[...st.ivs].sort((a,b)=>a-b);st.bpm=Math.round(60000/o[o.length>>1])}
+    st.beatN++;st.sceneBeat++;st.kick=1;st.head=(st.head+1)%n;st.hue+=0.09}
+  /* drop: subida fuerte de energía */
+  const isDrop=st.eShort>st.eLong*1.55&&st.eShort>0.35&&now-st.lastDrop>7000;
+  if(isDrop){st.lastDrop=now;st.burstUntil=now+1600;st.sceneBeat=99}
+  const calm=st.eShort<0.07;
+  if(A.style==='auto'){if(st.sceneBeat>=16){st.sceneBeat=0;st.sceneIdx=(st.sceneIdx+1)%(SC.length-1)}}
+  st.scene=calm?'calm':(now<st.burstUntil?'burst':(A.style==='auto'?SC[st.sceneIdx]:A.style));
+  st.beat=beat;st.n=n;
+  if(now-st.lastInfo>400){st.lastInfo=now;const el=document.getElementById('asInfo');if(el)el.textContent=(st.bpm?st.bpm+' BPM · ':'')+NAMES[st.scene]}
+}
+A.fx=function(f,idx,mover,bPan,bTilt,size,hasMove,now,dt){
+  if(idx===0||st.lastFrame!==now){if(st.lastFrame!==now){st.lastFrame=now;frame(now,dt)}}
+  const n=st.n,sc=st.scene,k=st.kick,en=st.energy,i=idx;
+  let env=0,h=st.hue,sat=1;
+  if(sc==='pulse'){env=0.12+0.88*k;h=st.hue+i/n*0.12}
+  else if(sc==='chase'){const d=(i-st.head+n)%n;env=Math.max(0.06,(d===0?1:d===1?0.55:d===n-1?0.4:0))*(0.45+0.55*Math.max(k,0.5));h=st.hue+i*0.07}
+  else if(sc==='alt'){const on=(i%2)===(st.beatN%2);env=on?(0.25+0.75*k):0.04;h=st.hue+(on?0:0.5)}
+  else if(sc==='wave'){env=Math.pow(0.5+0.5*Math.sin(st.t*(3+en*6)-i*0.9),2)*(0.55+0.45*Math.max(k,en));h=st.hue+i/n*0.5}
+  else if(sc==='burst'){const on=Math.floor(now/70)%2===0;env=on?1:0;sat=0.15;h=st.hue}
+  else {env=0.18+0.14*Math.sin(st.t*0.9+i*0.7);h=st.t*0.03+i*0.05;sat=0.9} /* calma */
+  if(st.highEnv>0.5&&sc!=='burst')env=Math.min(1,env+0.35*st.highEnv);
+  f.values.Dimmer=Math.max(0,Math.min(255,Math.round(env*255)));
+  const c=hsv(h,sat,1);f.values.Red=c[0];f.values.Green=c[1];f.values.Blue=c[2];
+  if(f.values.Strobe!==undefined&&f.values.Strobe>0&&sc!=='burst')f.values.Strobe=0;
+  if(mover&&!hasMove){
+    const amp=(26+60*Math.min(1,en*1.5))*size, sgn=(i%2?-1:1);let dp=0,dt2=0;
+    if(sc==='pulse'||sc==='calm'){dp=Math.sin(st.t*0.6+i)*amp*(sc==='calm'?0.4:0.8);dt2=-k*amp*0.5}
+    else if(sc==='chase'){const mid=(n-1)/2;dp=(i-mid)*(amp/Math.max(1,mid))*((st.beatN%2)?1:-1);dt2=-k*amp*0.45+Math.sin(st.t*2+i)*amp*0.2}
+    else if(sc==='alt'){dp=sgn*amp*((st.beatN%2)?1:-1);dt2=-k*amp*0.6}
+    else if(sc==='wave'){dp=Math.sin(st.t*(1.2+en*3)+i*0.8)*amp;dt2=Math.cos(st.t*(1.2+en*3)+i*0.8)*amp*0.6}
+    else {dp=sgn*Math.sin(now*0.02)*amp*0.4;dt2=-amp*0.6+(Math.floor(now/90)%2?amp*0.4:0)}
+    const tp=bPan+dp,tt=bTilt+dt2,kk=1-Math.exp(-dt*(sc==='burst'?20:11));
+    if(st.cp[i]===undefined){st.cp[i]=bPan;st.ct[i]=bTilt}
+    st.cp[i]+=(tp-st.cp[i])*kk;st.ct[i]+=(tt-st.ct[i])*kk;
+    f.values.Pan=Math.max(0,Math.min(255,Math.round(st.cp[i])));f.values.Tilt=Math.max(0,Math.min(255,Math.round(st.ct[i])));
+  }
+};
+const sel=document.getElementById('asStyleSel');if(sel)sel.value=A.style;
 })();
 </script>
 </body>
