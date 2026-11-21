@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BARRIOS PRO - Controlador de Iluminación DMX</title>
-<meta name="barrios-version" content="7.6.0">
+<meta name="barrios-version" content="7.6.1">
 <style>
 :root{
   --bg:#0b0f17;--bg2:#151d2b;--bg3:#1e293b;--line:#324258;--txt:#e6eef8;--mut:#95a8c0;
@@ -72,7 +72,7 @@ input[type=text],input[type=number],select{background:#111926;border:1px solid #
 <body>
 <div id="app">
 <header class="topbar">
-  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.6.0</div></div>
+  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.6.1</div></div>
   <div class="topbtns">
     <button onclick="openTool('Nuevo Show')">📄 Nuevo</button>
     <button onclick="openTool('Abrir Show')">📂 Abrir</button>
@@ -4471,6 +4471,12 @@ window.toggleStageFullscreen=toggleFS;
 const q=document.getElementById('trussQuickSelect');if(q){const b=document.createElement('button');b.id='fsBtn';b.type='button';b.textContent='⛶ Pantalla completa';b.title='Ver el escenario 3D a pantalla completa (Esc para salir)';b.onclick=toggleFS;q.insertAdjacentElement('afterend',b)}
 document.addEventListener('fullscreenchange',()=>{const m=document.getElementById('cm3d');if(m){(document.fullscreenElement||document.body).appendChild(m);m.style.display='none'}});
 })();
+</script>
+<script>
+/* ===== 7.6.1 · Size FX en 0 no deja ver los efectos ===== */
+(function(){const o=window.toggleQuickEffect;if(typeof o!=='function')return;
+window.toggleQuickEffect=function(fx){const was=(typeof activeEffects!=='undefined')&&activeEffects.has(fx);const r=o.apply(this,arguments);
+ try{if(fx!=='stopall'&&!was&&activeEffects.has(fx)&&(state.effectSize||0)<=0&&['circle','fig8','sweep','tiltwave','mirror','sine','pulse','random'].includes(fx)){setEffectSize(100);save();notify('El tamaño del efecto (Size FX) estaba en 0%: lo puse en 100% para que se vea')}}catch(e){}return r}})();
 </script>
 </body>
 </html>
