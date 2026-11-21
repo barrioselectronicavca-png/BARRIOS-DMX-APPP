@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BARRIOS PRO - Controlador de Iluminación DMX</title>
-<meta name="barrios-version" content="7.9.0">
+<meta name="barrios-version" content="7.9.1">
 <style>
 :root{
   --bg:#0b0f17;--bg2:#151d2b;--bg3:#1e293b;--line:#324258;--txt:#e6eef8;--mut:#95a8c0;
@@ -72,7 +72,7 @@ input[type=text],input[type=number],select{background:#111926;border:1px solid #
 <body>
 <div id="app">
 <header class="topbar">
-  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.9.0</div></div>
+  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.9.1</div></div>
   <div class="topbtns">
     <button onclick="openTool('Nuevo Show')">📄 Nuevo</button>
     <button onclick="openTool('Abrir Show')">📂 Abrir</button>
@@ -243,6 +243,9 @@ input[type=text],input[type=number],select{background:#111926;border:1px solid #
         <button id="fxAudioSyncBtn" onclick="toggleAudioSync()">🎤 Audio</button>
         <button id="fxAudioSelBtn" onclick="audioPicker()" title="Elegir entrada de audio">⚙ Entrada de audio</button>
       </div>
+      <div class="qfx-strobe" style="margin-top:4px"><b style="color:var(--gold)">🎤 Volumen mic:</b>
+        <input id="micGainRange" type="range" min="0" max="500" value="100" style="flex:1" oninput="setMicGain(+this.value)">
+        <output id="micGainOut" style="min-width:40px;text-align:right;color:var(--gold)">100%</output></div>
       <div class="qfx-strobe" style="margin-top:4px"><b style="color:var(--gold)">🎤 Show:</b>
         <select id="asStyleSel" style="flex:1" onchange="BARRIOS_AS&&BARRIOS_AS.setStyle(this.value)">
           <option value="auto">AUTO · show completo (cambia solo)</option><option value="pulse">Pulso al bombo</option><option value="chase">Chase al ritmo</option><option value="alt">Alterno izq/der</option><option value="wave">Ola de luz</option><option value="burst">Strobe / Drop</option>
@@ -4522,13 +4525,14 @@ window.toggleQuickEffect=function(fx){const was=(typeof activeEffects!=='undefin
 (function(){
 const LS='barrios_audio_dev';
 const g=()=>{try{return localStorage.getItem(LS)||''}catch(e){return''}};
-let meter=null,silentSince=0;
+let meter=null,silentSince=0,micGainNode=null,micGain=1;try{micGain=parseFloat(localStorage.getItem('barrios_mic_gain'))||1}catch(e){}
+window.setMicGain=function(v){micGain=Math.max(0,Math.min(5,v/100));if(micGainNode)micGainNode.gain.value=micGain;try{localStorage.setItem('barrios_mic_gain',String(micGain))}catch(e){}const o=document.getElementById('micGainOut');if(o)o.textContent=Math.round(micGain*100)+'%'};
 function setBtn(txt){const b=document.getElementById('fxAudioSyncBtn');if(b)b.textContent=txt}
 async function begin(stream,label){
   audioCtx=new (window.AudioContext||window.webkitAudioContext)();
   try{await audioCtx.resume()}catch(e){}
   const src=audioCtx.createMediaStreamSource(stream);
-  analyser=audioCtx.createAnalyser();analyser.fftSize=512;analyser.smoothingTimeConstant=0.72;src.connect(analyser);
+  analyser=audioCtx.createAnalyser();analyser.fftSize=512;analyser.smoothingTimeConstant=0.72;micGainNode=audioCtx.createGain();micGainNode.gain.value=micGain;src.connect(micGainNode);micGainNode.connect(analyser);
   audioDataArray=new Uint8Array(analyser.frequencyBinCount);micStream=stream;audioActive=true;
   bassAvg=0.25;midAvg=0.2;highAvg=0.15;updateAudioUI();silentSince=Date.now();
   notify('🎤 Audio FX ACTIVO'+(label?' ('+label+')':''));
@@ -4577,6 +4581,7 @@ window.audioPicker=async function(){
 };
 window.audioUse=function(id){try{localStorage.setItem(LS,id)}catch(e){}closeModal();if(audioActive){stopAudioSync();clearInterval(meter)}setTimeout(()=>toggleAudioSync(),150)};
 const sel=document.getElementById('flashModeSel');if(sel)sel.value=state.flashMode||'classic';
+const mr=document.getElementById('micGainRange');if(mr){mr.value=Math.round(micGain*100);const o=document.getElementById('micGainOut');if(o)o.textContent=Math.round(micGain*100)+'%'}
 })();
 </script>
 
