@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BARRIOS PRO - Controlador de Iluminación DMX</title>
-<meta name="barrios-version" content="7.0.0">
+<meta name="barrios-version" content="7.1.0">
 <style>
 :root{
   --bg:#0b0f17;--bg2:#151d2b;--bg3:#1e293b;--line:#324258;--txt:#e6eef8;--mut:#95a8c0;
@@ -4271,6 +4271,66 @@ window.updateAddr=function(id,v){const f=state.fixtures.find(x=>x.id===id);if(f)
 try{const cur=localStorage.getItem(STORAGE_KEY);if(cur){const b1=localStorage.getItem('barrios_backup_1');if(b1!==cur){localStorage.setItem('barrios_backup_2',b1||cur);localStorage.setItem('barrios_backup_1',cur)}}}catch(e){}
 window.addEventListener('beforeunload',()=>{if(C.hl)C.toggleHL(false);if(C.bo){state.master=preMaster}try{save()}catch(e){}});
 renderCueTable();renderFixtures();C.tap.bpmInit=1;const bt=$('#btnTap');if(bt)bt.textContent='TAP '+state.bpm;
+})();
+
+</script>
+<script>
+/* ===== BARRIOS 7.1 · LICENCIA ===== */
+(function(){
+'use strict';
+const PUB={"kty": "EC", "x": "0NTaLPXjw93HAnYcW9RLwkCK3NYcINzkifTy-gstERI", "y": "tkKJwYIW44vrnDl3aIc6NEiUKkA-AFqVAZE7Kq2pRXM", "crv": "P-256"}, TRIAL_DAYS=7, WA='595991551547', K_ID='barrios_mid', K_T0='barrios_trial0', K_SEEN='barrios_seen', K_LIC='barrios_license';
+const g=k=>{try{return localStorage.getItem(k)}catch(e){return null}}, s=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+const L=window.BARRIOS_LIC={status:'checking',days:0,client:''};
+function machineId(){let id=g(K_ID);if(!id||!/^BDMX-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(id)){const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',r=crypto.getRandomValues(new Uint8Array(12));const c=[...r].map(x=>A[x%A.length]).join('');id='BDMX-'+c.slice(0,4)+'-'+c.slice(4,8)+'-'+c.slice(8,12);s(K_ID,id)}return id}
+const b64u=t=>Uint8Array.from(atob(t.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
+async function verify(key){
+  try{const [p,sg]=String(key).trim().replace(/\s+/g,'').split('.');if(!p||!sg)return null;
+    const pk=await crypto.subtle.importKey('jwk',PUB,{name:'ECDSA',namedCurve:'P-256'},false,['verify']);
+    const ok=await crypto.subtle.verify({name:'ECDSA',hash:'SHA-256'},pk,b64u(sg),b64u(p));if(!ok)return null;
+    const [m,t,e,c]=new TextDecoder().decode(b64u(p)).split('|');return {m,t,e,c}}catch(e){return null}}
+const today=()=>{const d=new Date();return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate()};
+async function evaluate(){
+  const id=machineId(),now=Date.now();let seen=+g(K_SEEN)||0;
+  const rolled=seen&&now<seen-36e5*24;if(!rolled)s(K_SEEN,String(Math.max(seen,now)));
+  const k=g(K_LIC);
+  if(k){const v=await verify(k);
+    if(v&&v.m===id){const exp=v.e?+v.e.replace(/-/g,''):0;
+      if(!exp||exp>=today()&&!rolled){L.status='licensed';L.client=v.c||'';L.exp=v.e||'';L.days=0;return}
+      L.status='expired';L.reason='Tu licencia venció el '+v.e;return}}
+  let t0=+g(K_T0);if(!t0){t0=now;s(K_T0,String(t0))}
+  const left=TRIAL_DAYS-Math.floor((now-t0)/864e5);
+  if(rolled||left<=0){L.status='expired';L.reason=rolled?'Se detectó un cambio de fecha en la PC.':'Terminó la prueba gratis de '+TRIAL_DAYS+' días.';L.days=0}
+  else{L.status='trial';L.days=left}}
+L.activate=async function(key){const v=await verify(key);
+  if(!v)return {ok:false,msg:'La clave no es válida. Revisá que esté completa.'};
+  if(v.m!==machineId())return {ok:false,msg:'Esa clave es para otra computadora (código '+v.m+').'};
+  if(v.e&&+v.e.replace(/-/g,'')<today())return {ok:false,msg:'Esa clave ya venció.'};
+  s(K_LIC,String(key).trim().replace(/\s+/g,''));await evaluate();render();return {ok:true,msg:'¡Licencia activada! Gracias.'}};
+const css=document.createElement('style');css.textContent=`#licWall{position:fixed;inset:0;z-index:99999;background:rgba(5,9,16,.97);display:flex;align-items:center;justify-content:center;color:#e6eef8;font-family:Segoe UI,Arial,sans-serif}
+#licWall .box,.licBox{width:min(560px,92vw);background:#111926;border:1px solid #2b3b52;border-radius:12px;padding:22px}
+#licWall h2,.licBox h2{margin:0 0 6px;color:#f5b800}#licWall code,.licBox code{display:block;font:700 20px Consolas,monospace;background:#070c14;border:1px solid #2b3b52;border-radius:8px;padding:10px;text-align:center;letter-spacing:1px;user-select:all}
+#licWall textarea,.licBox textarea{width:100%;height:78px;background:#070c14;color:#cfe4ff;border:1px solid #2b3b52;border-radius:8px;padding:8px;font:11px Consolas,monospace;box-sizing:border-box}
+.licMsg{min-height:18px;margin:6px 0;font-size:13px}#btnLic.warn{background:#5a3b0b;border-color:#e6a117;color:#ffd27a}`;document.head.appendChild(css);
+function body(){const id=machineId();return `<p style="margin:0 0 10px;color:#9fb0c3;font-size:13px">Para seguir usando el programa necesitás una licencia. Cada licencia sirve para una computadora.</p>
+<p style="margin:8px 0 4px;font-size:12px;color:#9fb0c3">Código de esta computadora (envialo a Electrónica Barrios):</p><code>${id}</code>
+<p style="margin:12px 0 4px;font-size:12px;color:#9fb0c3">Pegá acá tu clave de licencia:</p><textarea id="licKey" spellcheck="false"></textarea>
+<div class="licMsg" id="licMsg"></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="gold" onclick="BARRIOS_LIC.doAct()">🔑 Activar</button><button onclick="navigator.clipboard&&navigator.clipboard.writeText('${id}');document.getElementById('licMsg').textContent='Código copiado'">Copiar código</button>
+<button onclick="BARRIOS_LIC.wa()">WhatsApp 0991 551 547</button></div>`}
+L.doAct=async function(){const r=await L.activate(document.getElementById('licKey').value);const m=document.getElementById('licMsg');if(m){m.style.color=r.ok?'#22df67':'#ff6b7a';m.textContent=r.msg}if(r.ok)setTimeout(()=>{const w=document.getElementById('licWall');if(w)w.remove();try{closeModal()}catch(e){}},1200)};
+L.wa=function(){const t=encodeURIComponent('Hola, quiero la licencia de BARRIOS DMX PRO. Código de mi PC: '+machineId());window.open('https://wa.me/'+WA+'?text='+t,'_blank')};
+function render(){
+  const b=document.getElementById('btnLic');
+  if(b){b.classList.toggle('warn',L.status!=='licensed');b.textContent=L.status==='licensed'?'✔ LICENCIADO':L.status==='trial'?('🔑 DEMO · '+L.days+' d'):'🔑 ACTIVAR'}
+  let w=document.getElementById('licWall');
+  if(L.status==='expired'){if(!w){w=document.createElement('div');w.id='licWall';document.body.appendChild(w)}
+    w.innerHTML='<div class="box"><h2>BARRIOS DMX PRO</h2><div style="color:#ff6b7a;margin-bottom:8px;font-weight:600">'+(L.reason||'')+'</div>'+body()+'</div>'}
+  else if(w)w.remove()}
+L.openDialog=function(){const st=L.status==='licensed'?'<b style="color:#22df67">Licencia activa</b>'+(L.client?' · '+L.client.replace(/[<>&]/g,''):'')+(L.exp?' · vence '+L.exp:' · permanente'):'Modo demo: te quedan <b>'+L.days+' días</b> con todas las funciones.';
+  openModal('🔑 Licencia','<div class="licBox" style="border:0">'+(L.status==='licensed'?'<p style="font-size:14px">'+st+'</p><p style="color:#9fb0c3;font-size:12px">Código de esta PC: <b>'+machineId()+'</b></p>':'<p style="font-size:14px;margin:0 0 8px">'+st+'</p>'+body())+'</div>')};
+const bar=document.querySelector('.console70');
+if(bar){const b=document.createElement('button');b.id='btnLic';b.onclick=()=>L.openDialog();bar.appendChild(b)}
+evaluate().then(render);setInterval(()=>evaluate().then(render),60000);
 })();
 
 </script>
