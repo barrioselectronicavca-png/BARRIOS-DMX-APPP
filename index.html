@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BARRIOS PRO - Controlador de Iluminación DMX</title>
-<meta name="barrios-version" content="7.10.1">
+<meta name="barrios-version" content="7.11.0">
 <style>
 :root{
   --bg:#0b0f17;--bg2:#151d2b;--bg3:#1e293b;--line:#324258;--txt:#e6eef8;--mut:#95a8c0;
@@ -72,7 +72,7 @@ input[type=text],input[type=number],select{background:#111926;border:1px solid #
 <body>
 <div id="app">
 <header class="topbar">
-  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.10.1</div></div>
+  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.11.0</div></div>
   <div class="topbtns">
     <button onclick="openTool('Nuevo Show')">📄 Nuevo</button>
     <button onclick="openTool('Abrir Show')">📂 Abrir</button>
@@ -1587,7 +1587,11 @@ function renderPtTab(){
       const sl=(lbl,k,d)=>`<label>${lbl}<input type="range" min="0" max="255" value="${p.values[k]??d}" oninput="setAttr('${k}',this.value);this.nextElementSibling.value=this.value"><output>${p.values[k]??d}</output></label>`;
       el.innerHTML=`<div class="macros">${F.map((g,i)=>`<button ${i===cur?'class="gold"':''} onclick="setAttr('Gobo',${Math.round(i*25.6+6)});setAttr('GraphicSelection',${Math.round(i*25.6+6)});renderPtTab()">${g}</button>`).join('')}</div><div class="sliders">${sl('Velocidad','DynamicSpeed',128)}${sl('Tamaño','PatternSize',128)}${sl('Rotación','PatternRotate',0)}</div>${(p.ranges&&p.ranges.lista&&p.ranges.lista.length)?`<h4 style="margin:8px 0 4px;color:#95a8c0;font-size:11px">MACROS DEL EQUIPO (CH ${p.ranges.canal} · ${p.ranges.atributo})</h4><div class="macros">${p.ranges.lista.map((rg,i)=>`<button title="DMX ${rg.desde}-${rg.hasta}" onclick="setAttr('${p.ranges.atributo}',${Math.round((rg.desde+rg.hasta)/2)});renderPtTab()">M${i} · ${rg.desde}-${rg.hasta}</button>`).join('')}</div>`:''}`;
     }else
-    el.innerHTML=`<div class="macros">${['Abierto','Círculos','Estrellas','Triángulos','Túnel','Prisma 3D'].map((g,i)=>`<button onclick="setAttr('Gobo',${i*40})">${g}</button>`).join('')}</div>`;
+    {const cm=p.channelMap||[],has=n=>cm.includes(n),pv=+(p.values.Prism||0),sl=(lbl,k,d)=>`<label>${lbl}<input type="range" min="0" max="255" value="${p.values[k]??d}" oninput="setAttr('${k}',this.value);this.nextElementSibling.value=this.value;if('${k}'==='Prism')renderPtTab&&0"><output>${p.values[k]??d}</output></label>`;
+    el.innerHTML=`<div style="font-size:11px;color:var(--gold);margin:2px 0">GOBO</div><div class="macros">${['Abierto','Círculos','Estrellas','Triángulos','Túnel'].map((g,i)=>`<button onclick="setAttr('Gobo',${i*40})">${g}</button>`).join('')}</div>
+    <div style="font-size:11px;color:var(--gold);margin:8px 0 2px">🔷 PRISMA ${has('Prism')?'':'<span style="color:#f99">(este modelo no tiene canal de prisma)</span>'}</div>
+    <div class="macros"><button ${pv<10?'class="gold"':''} onclick="setAttr('Prism',0);renderPtTab()">Prisma OFF</button><button ${pv>=10?'class="gold"':''} onclick="setAttr('Prism',200);renderPtTab()">Prisma ON</button></div>
+    <div class="sliders">${sl('Prisma (valor DMX)','Prism',0)}${has('PrismRot')?sl('Giro del prisma','PrismRot',0):''}${has('Frost')?sl('Frost','Frost',0):''}${has('GoboRot')?sl('Giro del gobo','GoboRot',0):''}</div>`}
   }else if(t==='Beam'){
     el.innerHTML=`<div class="sliders"><label>Focus<input type="range" min="0" max="255" value="${p.values.Focus}" oninput="setAttr('Focus',this.value)"><output>${p.values.Focus}</output></label><label>Zoom<input type="range" min="0" max="255" value="${p.values.Zoom}" oninput="setAttr('Zoom',this.value)"><output>${p.values.Zoom}</output></label><label>Prisma<input type="range" min="0" max="255" value="${p.values.Prism}" oninput="setAttr('Prism',this.value)"><output>${p.values.Prism}</output></label></div>`;
   }else{
@@ -3861,6 +3865,10 @@ disc(AT,add(e.p,mul(dir,.05)),CR,CU,e.g,12,col,Math.min(.9,dim*.9),0);
 for(let i=0;i<=N;i++){const a=i/N*6.2832,d=nrm(add(dir,add(mul(u,Math.cos(a)*tn),mul(w,Math.sin(a)*tn))));ends.push(add(o,mul(d,tExit(o,d))))}
 const cone=(sc,al)=>{for(let i=0;i<N;i++){const q0=add(o,mul(sub(ends[i],o),sc)),q1=add(o,mul(sub(ends[i+1],o),sc));V(AT,o,[r,g,b,al]);V(AT,q0,[r,g,b,al*.3]);V(AT,q1,[r,g,b,al*.3])}};
 cone(1,a0);if(cnt===1)cone(.55,a0*.8);
+if((+(v.Prism||0))>=10&&M.mv){const pr=(+(v.PrismRot||0))/255,sp=tn*2.6+.04;for(let k=0;k<3;k++){const th=k*2.0944+now*.0006*(1+pr*8),d0=nrm(add(dir,add(mul(u,Math.cos(th)*sp),mul(w,Math.sin(th)*sp)))),en=[];
+for(let i=0;i<=8;i++){const a=i/8*6.2832,d=nrm(add(d0,add(mul(u,Math.cos(a)*tn*.8),mul(w,Math.sin(a)*tn*.8))));en.push(add(o,mul(d,tExit(o,d))))}
+for(let i=0;i<8;i++){V(AT,o,[r,g,b,a0*.9]);V(AT,en[i],[r,g,b,a0*.25]);V(AT,en[i+1],[r,g,b,a0*.25])}
+const cc=add(o,mul(d0,tExit(o,d0)));disc(AT,cc,CR,CU,.2,10,col,Math.min(.6,dim*.6),0)}}
 const cT=add(o,mul(dir,tExit(o,dir)));
 for(let i=0;i<N;i++){V(AT,cT,[r,g,b,pa]);V(AT,ends[i],[r,g,b,pa*.25]);V(AT,ends[i+1],[r,g,b,pa*.25])}})}
 
@@ -4664,6 +4672,7 @@ A.fx=function(f,idx,mover,bPan,bTilt,size,hasMove,now,dt){
   if(st.high>0.6&&sc!=='burst'&&sc!=='calm')env=Math.min(1,env+0.4);
   f.values.Dimmer=Math.max(0,Math.min(255,Math.round(env*255)));
   const c=hsv(h,sat,1);f.values.Red=c[0];f.values.Green=c[1];f.values.Blue=c[2];
+  if(mover&&f.channelMap&&f.channelMap.includes('Prism')){const pon=(sc==='circle'||sc==='burst'||sc==='rainbow'||sc==='fan');f.values.Prism=pon?200:0;if(f.channelMap.includes('PrismRot'))f.values.PrismRot=pon?Math.round(60+en*120):0}
   if(mover&&!hasMove){
     const sz=Math.max(0.8,size),amp=(55+85*Math.min(1,en*1.2))*sz,th=Math.PI*st.clock*0.5*(velV/50),sg=(i%2?-1:1);let dp=0,dtl=0;
     if(sc==='circle'){const o=i*2*Math.PI/n;dp=Math.cos(th+o)*amp;dtl=Math.sin(th+o)*amp*0.85}
