@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BARRIOS PRO - Controlador de Iluminación DMX</title>
-<meta name="barrios-version" content="7.9.1">
+<meta name="barrios-version" content="7.10.0">
 <style>
 :root{
   --bg:#0b0f17;--bg2:#151d2b;--bg3:#1e293b;--line:#324258;--txt:#e6eef8;--mut:#95a8c0;
@@ -72,7 +72,7 @@ input[type=text],input[type=number],select{background:#111926;border:1px solid #
 <body>
 <div id="app">
 <header class="topbar">
-  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.9.1</div></div>
+  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.10.0</div></div>
   <div class="topbtns">
     <button onclick="openTool('Nuevo Show')">📄 Nuevo</button>
     <button onclick="openTool('Abrir Show')">📂 Abrir</button>
@@ -244,11 +244,11 @@ input[type=text],input[type=number],select{background:#111926;border:1px solid #
         <button id="fxAudioSelBtn" onclick="audioPicker()" title="Elegir entrada de audio">⚙ Entrada de audio</button>
       </div>
       <div class="qfx-strobe" style="margin-top:4px"><b style="color:var(--gold)">🎤 Volumen mic:</b>
-        <input id="micGainRange" type="range" min="0" max="500" value="100" style="flex:1" oninput="setMicGain(+this.value)">
-        <output id="micGainOut" style="min-width:40px;text-align:right;color:var(--gold)">100%</output></div>
+        <input id="micGainRange" type="range" min="0" max="100" value="60" style="flex:1" oninput="setMicGain(+this.value)">
+        <output id="micGainOut" style="min-width:40px;text-align:right;color:var(--gold)">0 dB</output></div>
       <div class="qfx-strobe" style="margin-top:4px"><b style="color:var(--gold)">🎤 Show:</b>
         <select id="asStyleSel" style="flex:1" onchange="BARRIOS_AS&&BARRIOS_AS.setStyle(this.value)">
-          <option value="auto">AUTO · show completo (cambia solo)</option><option value="pulse">Pulso al bombo</option><option value="chase">Chase al ritmo</option><option value="alt">Alterno izq/der</option><option value="wave">Ola de luz</option><option value="burst">Strobe / Drop</option>
+          <option value="auto">AUTO · show completo (cambia solo)</option><option value="circle">Círculos al ritmo</option><option value="pulse">Pulso al bombo</option><option value="chase">Chase al ritmo</option><option value="fan">Abanico</option><option value="alt">Alterno izq/der</option><option value="cross">Cruce</option><option value="rainbow">Arcoíris rodante</option><option value="wave">Ola de luz</option><option value="snare">Golpes (bombo + caja)</option><option value="burst">Strobe</option>
         </select><span id="asInfo" style="min-width:70px;text-align:right;color:var(--gold);font-size:11px">—</span></div>
       <div class="qfx-strobe" style="margin-top:4px"><b style="color:var(--gold)">⚡ Flash:</b>
         <select id="flashModeSel" style="flex:1" onchange="state.flashMode=this.value;save();if(!activeEffects.has('flash'))toggleQuickEffect('flash')">
@@ -4525,14 +4525,14 @@ window.toggleQuickEffect=function(fx){const was=(typeof activeEffects!=='undefin
 (function(){
 const LS='barrios_audio_dev';
 const g=()=>{try{return localStorage.getItem(LS)||''}catch(e){return''}};
-let meter=null,silentSince=0,micGainNode=null,micGain=1;try{micGain=parseFloat(localStorage.getItem('barrios_mic_gain'))||1}catch(e){}
-window.setMicGain=function(v){micGain=Math.max(0,Math.min(5,v/100));if(micGainNode)micGainNode.gain.value=micGain;try{localStorage.setItem('barrios_mic_gain',String(micGain))}catch(e){}const o=document.getElementById('micGainOut');if(o)o.textContent=Math.round(micGain*100)+'%'};
+let meter=null,silentSince=0,micGainNode=null,micPos=60,micGain=1;const posG=p=>p<=0?0:Math.pow(10,(p-60)/25);try{const q=parseFloat(localStorage.getItem('barrios_mic_pos'));if(isFinite(q))micPos=q}catch(e){}micGain=posG(micPos);
+window.setMicGain=function(p){micPos=Math.max(0,Math.min(100,+p));micGain=posG(micPos);if(micGainNode)micGainNode.gain.value=micGain;try{localStorage.setItem('barrios_mic_pos',String(micPos))}catch(e){}const o=document.getElementById('micGainOut');if(o)o.textContent=micGain<=0?'mute':(Math.round(20*Math.log10(micGain))>0?'+':'')+Math.round(20*Math.log10(micGain))+' dB'};
 function setBtn(txt){const b=document.getElementById('fxAudioSyncBtn');if(b)b.textContent=txt}
 async function begin(stream,label){
   audioCtx=new (window.AudioContext||window.webkitAudioContext)();
   try{await audioCtx.resume()}catch(e){}
   const src=audioCtx.createMediaStreamSource(stream);
-  analyser=audioCtx.createAnalyser();analyser.fftSize=512;analyser.smoothingTimeConstant=0.72;micGainNode=audioCtx.createGain();micGainNode.gain.value=micGain;src.connect(micGainNode);micGainNode.connect(analyser);
+  analyser=audioCtx.createAnalyser();analyser.fftSize=512;analyser.smoothingTimeConstant=0.6;analyser.minDecibels=-110;analyser.maxDecibels=-10;micGainNode=audioCtx.createGain();micGainNode.gain.value=micGain;src.connect(micGainNode);micGainNode.connect(analyser);
   audioDataArray=new Uint8Array(analyser.frequencyBinCount);micStream=stream;audioActive=true;
   bassAvg=0.25;midAvg=0.2;highAvg=0.15;updateAudioUI();silentSince=Date.now();
   notify('🎤 Audio FX ACTIVO'+(label?' ('+label+')':''));
@@ -4581,65 +4581,90 @@ window.audioPicker=async function(){
 };
 window.audioUse=function(id){try{localStorage.setItem(LS,id)}catch(e){}closeModal();if(audioActive){stopAudioSync();clearInterval(meter)}setTimeout(()=>toggleAudioSync(),150)};
 const sel=document.getElementById('flashModeSel');if(sel)sel.value=state.flashMode||'classic';
-const mr=document.getElementById('micGainRange');if(mr){mr.value=Math.round(micGain*100);const o=document.getElementById('micGainOut');if(o)o.textContent=Math.round(micGain*100)+'%'}
+const mr=document.getElementById('micGainRange');if(mr){mr.value=micPos;setMicGain(micPos)}
 })();
 </script>
 
 <script>
-/* ===== 7.9 · AUDIO SHOW: ritmo, escenas, movimiento y drops ===== */
+/* ===== 7.10 · AUDIO SHOW: reloj de ritmo, circulos, on/off al golpe ===== */
 (function(){
 const A=window.BARRIOS_AS={style:'auto'};
-const SC=['pulse','chase','alt','wave','burst'];const NAMES={pulse:'Pulso',chase:'Chase',alt:'Alterno',wave:'Ola',burst:'Strobe',calm:'Calma'};
-let st={beatN:0,lastBeat:0,ivs:[],bpm:0,kick:0,hue:0,sceneIdx:0,sceneBeat:0,burstUntil:0,lastDrop:0,eShort:0,eLong:0.15,energy:0,env:[],cp:[],ct:[],head:0,t:0,lastFrame:-1,calmT:0,highEnv:0,lastInfo:0,hiAvg:0.1};
+const NAMES={pulse:'Pulso',circle:'Círculos',chase:'Chase',alt:'Alterno',wave:'Ola',fan:'Abanico',rainbow:'Arcoíris',cross:'Cruce',burst:'Strobe',calm:'Calma',snare:'Golpes'};
+const AUTO=['circle','pulse','chase','fan','alt','rainbow','cross','wave','snare'];
+const st={beatN:0,lastBeat:0,ivs:[],bpm:0,kick:0,snare:0,hue:0,scene:'calm',sceneBeat:0,autoIdx:0,burstUntil:0,lastDrop:0,eShort:0,eLong:0.2,energy:0,cp:[],ct:[],t:0,lastFrame:-1,clock:0,high:0,lastInfo:0,mx:{b:0.1,m:0.1,h:0.1},av:{b:0,m:0,h:0},pb:0,pm:0,lastSnare:0,jump:[0,0],n:1,sil:true};
 const fr=x=>x-Math.floor(x);
 function hsv(h,s,v){h=fr(h)*6;const i=Math.floor(h),f=h-i,p=v*(1-s),q=v*(1-s*f),t=v*(1-s*(1-f));
-  const m=[[v,t,p],[q,v,p],[p,v,t],[p,q,v],[t,p,v],[v,p,q]][i%6];return m.map(x=>Math.round(x*255))}
+  return [[v,t,p],[q,v,p],[p,v,t],[p,q,v],[t,p,v],[v,p,q]][i%6].map(x=>Math.round(x*255))}
 A.setStyle=function(v){A.style=v;st.sceneBeat=0;try{localStorage.setItem('barrios_as_style',v)}catch(e){};if(typeof notify==='function')notify('Show de audio: '+(v==='auto'?'AUTO (cambia solo)':NAMES[v]))};
-try{const v=localStorage.getItem('barrios_as_style');if(v){A.style=v;const el=document.getElementById('asStyleSel');if(el)el.value=v}}catch(e){}
+try{const v=localStorage.getItem('barrios_as_style');if(v&&(v==='auto'||NAMES[v]))A.style=v}catch(e){}
+function pickScene(){let k;do{k=Math.floor(Math.random()*AUTO.length)}while(AUTO[k]===st.scene&&AUTO.length>1);return AUTO[k]}
+function onBeat(now,synthetic){
+  st.beatN++;st.sceneBeat++;st.kick=1;st.hue+=0.07;
+  st.clock+=(Math.round(st.clock)-st.clock)*(synthetic?0:0.7);
+  if(!synthetic){const iv=now-st.lastBeat;if(iv>280&&iv<900){st.ivs.push(iv);if(st.ivs.length>10)st.ivs.shift();const o=[...st.ivs].sort((a,b)=>a-b);st.bpm=Math.round(60000/o[o.length>>1])}}
+  st.lastBeat=now;
+  if(A.style==='auto'&&st.sceneBeat>=8){st.sceneBeat=0;st.scene=pickScene()}
+}
 function frame(now,dt){
-  st.t+=dt;const n=Math.max(1,state.fixtures.length);
-  const e=Math.min(1,bassEnergy*0.6+midEnergy*0.3+highEnergy*0.1);
-  st.energy+=(e-st.energy)*Math.min(1,dt*10);
-  st.eShort+=(e-st.eShort)*Math.min(1,dt*2.5);st.eLong+=(e-st.eLong)*Math.min(1,dt*0.15);
-  st.kick*=Math.exp(-dt*6.5);st.highEnv*=Math.exp(-dt*9);
-  const hiHit=highEnergy>st.hiAvg*1.55+0.08;st.hiAvg+=(highEnergy-st.hiAvg)*Math.min(1,dt*3);if(hiHit)st.highEnv=1;
-  /* golpe de bombo detectado por el motor de audio */
-  let beat=false;if(lastBeatTime!==st.lastBeat){beat=true;const iv=lastBeatTime-st.lastBeat;st.lastBeat=lastBeatTime;
-    if(iv>280&&iv<800){st.ivs.push(iv);if(st.ivs.length>10)st.ivs.shift();const o=[...st.ivs].sort((a,b)=>a-b);st.bpm=Math.round(60000/o[o.length>>1])}
-    st.beatN++;st.sceneBeat++;st.kick=1;st.head=(st.head+1)%n;st.hue+=0.09}
-  /* drop: subida fuerte de energía */
-  const isDrop=st.eShort>st.eLong*1.55&&st.eShort>0.35&&now-st.lastDrop>7000;
-  if(isDrop){st.lastDrop=now;st.burstUntil=now+1600;st.sceneBeat=99}
-  const calm=st.eShort<0.07;
-  if(A.style==='auto'){if(st.sceneBeat>=16){st.sceneBeat=0;st.sceneIdx=(st.sceneIdx+1)%(SC.length-1)}}
-  st.scene=calm?'calm':(now<st.burstUntil?'burst':(A.style==='auto'?SC[st.sceneIdx]:A.style));
-  st.beat=beat;st.n=n;
-  if(now-st.lastInfo>400){st.lastInfo=now;const el=document.getElementById('asInfo');if(el)el.textContent=(st.bpm?st.bpm+' BPM · ':'')+NAMES[st.scene]}
+  st.t+=dt;st.n=Math.max(1,state.fixtures.length);
+  const d=audioDataArray;let rb=0,rm=0,rh=0;
+  if(d){for(let i=1;i<=7;i++)rb+=d[i];rb/=7*255;for(let i=10;i<=36;i++)rm+=d[i];rm/=27*255;for(let i=45;i<=110;i++)rh+=d[i];rh/=66*255}
+  st.sil=(rb+rm)<0.05;
+  const M=st.mx,V=st.av,dec=Math.exp(-dt*0.35);
+  M.b=Math.max(M.b*dec,rb,0.08);M.m=Math.max(M.m*dec,rm,0.08);M.h=Math.max(M.h*dec,rh,0.08);
+  const nb=rb/M.b,nm=rm/M.m,nh=rh/M.h;
+  V.b+=(nb-V.b)*Math.min(1,dt*5);V.m+=(nm-V.m)*Math.min(1,dt*5);V.h+=(nh-V.h)*Math.min(1,dt*5);
+  const sens=(typeof audioSensitivity==='number'?audioSensitivity:1.3)/1.3;
+  /* bombo */
+  if(!st.sil&&nb>0.5/Math.max(0.6,sens)&&nb-st.pb>0.015&&nb>V.b*1.18&&now-st.lastBeat>235)onBeat(now,false);
+  else if(!st.sil&&st.bpm&&now-st.lastBeat>60000/st.bpm*1.15&&now-st.lastBeat>420)onBeat(now,true); /* mantiene el ritmo si falla un golpe */
+  /* caja / medios */
+  if(!st.sil&&nm>0.55&&nm-st.pm>0.03&&nm>V.m*1.2&&now-st.lastSnare>170){st.lastSnare=now;st.snare=1;st.jump=[(Math.random()-0.5)*2,(Math.random()-0.5)*2]}
+  st.pb=nb;st.pm=nm;
+  if(nh>V.h*1.5+0.1)st.high=1;
+  st.kick*=Math.exp(-dt*9);st.snare*=Math.exp(-dt*11);st.high*=Math.exp(-dt*10);
+  st.clock+=dt*(st.bpm||120)/60;
+  const e=Math.min(1,nb*0.5+nm*0.35+nh*0.15)*(st.sil?0:1);
+  st.energy+=(e-st.energy)*Math.min(1,dt*8);st.eShort+=(e-st.eShort)*Math.min(1,dt*2.5);st.eLong+=(e-st.eLong)*Math.min(1,dt*0.12);
+  if(st.eShort>st.eLong*1.5&&st.eShort>0.55&&now-st.lastDrop>8000){st.lastDrop=now;st.burstUntil=now+1800;st.sceneBeat=0;st.scene=pickScene()}
+  if(A.style!=='auto')st.scene=A.style;
+  else if(!NAMES[st.scene]||st.scene==='calm'||st.scene==='burst')st.scene=pickScene();
+  st.cur=st.sil?'calm':(now<st.burstUntil?'burst':st.scene);
+  if(now-st.lastInfo>400){st.lastInfo=now;const el=document.getElementById('asInfo');if(el)el.textContent=(st.bpm?st.bpm+' BPM · ':'')+NAMES[st.cur]}
 }
 A.fx=function(f,idx,mover,bPan,bTilt,size,hasMove,now,dt){
-  if(idx===0||st.lastFrame!==now){if(st.lastFrame!==now){st.lastFrame=now;frame(now,dt)}}
-  const n=st.n,sc=st.scene,k=st.kick,en=st.energy,i=idx;
-  let env=0,h=st.hue,sat=1;
-  if(sc==='pulse'){env=0.12+0.88*k;h=st.hue+i/n*0.12}
-  else if(sc==='chase'){const d=(i-st.head+n)%n;env=Math.max(0.06,(d===0?1:d===1?0.55:d===n-1?0.4:0))*(0.45+0.55*Math.max(k,0.5));h=st.hue+i*0.07}
-  else if(sc==='alt'){const on=(i%2)===(st.beatN%2);env=on?(0.25+0.75*k):0.04;h=st.hue+(on?0:0.5)}
-  else if(sc==='wave'){env=Math.pow(0.5+0.5*Math.sin(st.t*(3+en*6)-i*0.9),2)*(0.55+0.45*Math.max(k,en));h=st.hue+i/n*0.5}
-  else if(sc==='burst'){const on=Math.floor(now/70)%2===0;env=on?1:0;sat=0.15;h=st.hue}
-  else {env=0.18+0.14*Math.sin(st.t*0.9+i*0.7);h=st.t*0.03+i*0.05;sat=0.9} /* calma */
-  if(st.highEnv>0.5&&sc!=='burst')env=Math.min(1,env+0.35*st.highEnv);
+  if(st.lastFrame!==now){st.lastFrame=now;frame(now,dt)}
+  const n=st.n,sc=st.cur,i=idx,k=st.kick,u=fr(st.clock),en=st.energy,mid=(n-1)/2;
+  let env=0,h=st.hue+i/n*0.15,sat=1;
+  if(sc==='pulse'){env=u<0.5?1-u*1.6:0;h=st.hue+i/n*0.12}
+  else if(sc==='circle'){env=u<0.75?1:0.12;h=st.hue+i/n*0.6}
+  else if(sc==='chase'){const hd=Math.floor(st.clock*2)%n,dd=(i-hd+n)%n;env=dd===0?1:dd===1?0.5:dd===n-1?0.3:0;h=st.hue+i*0.08}
+  else if(sc==='fan'){env=u<0.55?1:0;h=st.hue+Math.abs(i-mid)/Math.max(1,mid)*0.3}
+  else if(sc==='alt'){env=((i%2)===(Math.floor(st.clock)%2))?(u<0.7?1:0.35):0;h=st.hue+((i%2)?0.5:0)}
+  else if(sc==='rainbow'){env=u<0.6?1:0.1;h=st.clock*0.25+i/n}
+  else if(sc==='cross'){env=((i%2)===(Math.floor(st.clock*2)%2))?1:0;h=st.hue+((i%2)?0.45:0)}
+  else if(sc==='wave'){env=Math.pow(0.5+0.5*Math.sin(st.clock*Math.PI*2-i*0.9),3);h=st.hue+i/n*0.5}
+  else if(sc==='snare'){env=Math.max(k,st.snare*0.9,0.04);h=st.hue+(st.snare>0.4?0.5:0)}
+  else if(sc==='burst'){env=fr(st.clock*4)<0.5?1:0;sat=0.12}
+  else{env=0.2+0.15*Math.sin(st.t*0.9+i*0.7);h=st.t*0.03+i*0.05;sat=0.9}
+  if(st.high>0.6&&sc!=='burst'&&sc!=='calm')env=Math.min(1,env+0.4);
   f.values.Dimmer=Math.max(0,Math.min(255,Math.round(env*255)));
   const c=hsv(h,sat,1);f.values.Red=c[0];f.values.Green=c[1];f.values.Blue=c[2];
-  if(f.values.Strobe!==undefined&&f.values.Strobe>0&&sc!=='burst')f.values.Strobe=0;
   if(mover&&!hasMove){
-    const amp=(26+60*Math.min(1,en*1.5))*size, sgn=(i%2?-1:1);let dp=0,dt2=0;
-    if(sc==='pulse'||sc==='calm'){dp=Math.sin(st.t*0.6+i)*amp*(sc==='calm'?0.4:0.8);dt2=-k*amp*0.5}
-    else if(sc==='chase'){const mid=(n-1)/2;dp=(i-mid)*(amp/Math.max(1,mid))*((st.beatN%2)?1:-1);dt2=-k*amp*0.45+Math.sin(st.t*2+i)*amp*0.2}
-    else if(sc==='alt'){dp=sgn*amp*((st.beatN%2)?1:-1);dt2=-k*amp*0.6}
-    else if(sc==='wave'){dp=Math.sin(st.t*(1.2+en*3)+i*0.8)*amp;dt2=Math.cos(st.t*(1.2+en*3)+i*0.8)*amp*0.6}
-    else {dp=sgn*Math.sin(now*0.02)*amp*0.4;dt2=-amp*0.6+(Math.floor(now/90)%2?amp*0.4:0)}
-    const tp=bPan+dp,tt=bTilt+dt2,kk=1-Math.exp(-dt*(sc==='burst'?20:11));
+    const sz=Math.max(0.8,size),amp=(55+85*Math.min(1,en*1.2))*sz,th=Math.PI*st.clock,sg=(i%2?-1:1);let dp=0,dtl=0;
+    if(sc==='circle'){const o=i*2*Math.PI/n;dp=Math.cos(th+o)*amp;dtl=Math.sin(th+o)*amp*0.85}
+    else if(sc==='fan'){dp=((i-mid)/Math.max(1,mid))*amp*(0.2+0.8*Math.abs(Math.cos(th/2)));dtl=-k*amp*0.5+Math.sin(th)*amp*0.2}
+    else if(sc==='cross'){dp=sg*amp*(Math.floor(st.clock)%2?1:-1);dtl=Math.sin(th*2)*amp*0.45}
+    else if(sc==='wave'){dp=Math.sin(th+i*0.7)*amp;dtl=Math.cos(th+i*0.7)*amp*0.6}
+    else if(sc==='chase'){const hd=Math.floor(st.clock*2)%n;dp=((i-mid)/Math.max(1,mid))*amp*0.7*(Math.floor(st.clock)%2?1:-1);dtl=(i===hd?-amp*0.7:0)-k*amp*0.3}
+    else if(sc==='alt'){dp=sg*amp*0.9*(Math.floor(st.clock)%2?1:-1);dtl=-k*amp*0.7}
+    else if(sc==='rainbow'){dp=Math.sin(th/2+i*0.5)*amp;dtl=-k*amp*0.6+Math.cos(th/2)*amp*0.3}
+    else if(sc==='snare'){dp=st.jump[0]*amp*0.9+Math.sin(th/2+i)*amp*0.3;dtl=st.jump[1]*amp*0.6-k*amp*0.5}
+    else if(sc==='burst'){dp=sg*Math.sin(now*0.03)*amp*0.5;dtl=-amp*0.5+(fr(st.clock*4)<0.5?amp*0.5:0)}
+    else{dp=Math.sin(st.t*0.5+i)*amp*0.35;dtl=Math.cos(st.t*0.4+i)*amp*0.2}
+    const kk=1-Math.exp(-dt*(sc==='burst'?22:15));
     if(st.cp[i]===undefined){st.cp[i]=bPan;st.ct[i]=bTilt}
-    st.cp[i]+=(tp-st.cp[i])*kk;st.ct[i]+=(tt-st.ct[i])*kk;
+    st.cp[i]+=(bPan+dp-st.cp[i])*kk;st.ct[i]+=(bTilt+dtl-st.ct[i])*kk;
     f.values.Pan=Math.max(0,Math.min(255,Math.round(st.cp[i])));f.values.Tilt=Math.max(0,Math.min(255,Math.round(st.ct[i])));
   }
 };
