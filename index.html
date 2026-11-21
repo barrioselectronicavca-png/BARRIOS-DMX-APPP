@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BARRIOS PRO - Controlador de Iluminación DMX</title>
-<meta name="barrios-version" content="7.8.0">
+<meta name="barrios-version" content="7.8.1">
 <style>
 :root{
   --bg:#0b0f17;--bg2:#151d2b;--bg3:#1e293b;--line:#324258;--txt:#e6eef8;--mut:#95a8c0;
@@ -72,7 +72,7 @@ input[type=text],input[type=number],select{background:#111926;border:1px solid #
 <body>
 <div id="app">
 <header class="topbar">
-  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.8.0</div></div>
+  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.8.1</div></div>
   <div class="topbtns">
     <button onclick="openTool('Nuevo Show')">📄 Nuevo</button>
     <button onclick="openTool('Abrir Show')">📂 Abrir</button>
@@ -4552,8 +4552,8 @@ window.toggleAudioSync=async function(){
 };
 function failModal(err){
   const n=(err&&err.name)||'';
-  const why=(n==='NotAllowedError'||n==='SecurityError')?'Windows o el programa no dieron permiso al micrófono. Abrí <b>Configuración de Windows → Privacidad → Micrófono</b> y activá "Permitir que las aplicaciones de escritorio accedan al micrófono".':(n==='NotFoundError'||n==='OverconstrainedError')?'No se encontró ninguna entrada de audio. Conectá un micrófono, o activá "Mezcla estéreo" en Windows (Sonido → Grabación).':'No se pudo abrir la entrada de audio ('+(n||'error')+').';
-  openModal('🎤 Audio FX',`<div style="padding:10px;max-width:520px"><p style="margin:0 0 10px;font-size:13px">${why}</p>
+  const why=(n==='NotAllowedError'||n==='SecurityError')?'El programa no tiene permiso para usar el micrófono (hace falta la versión nueva del programa de escritorio: carpeta BARRIOS_EXE_NUEVO). Si ya la instalaste, abrí <b>Configuración de Windows → Privacidad → Micrófono</b> y activá "Permitir que las aplicaciones de escritorio accedan al micrófono".':(n==='NotFoundError'||n==='OverconstrainedError')?'No se encontró ninguna entrada de audio. Conectá un micrófono, o activá "Mezcla estéreo" en Windows (Sonido → Grabación).':'No se pudo abrir la entrada de audio ('+(n||'error')+').';
+  openModal('🎤 Audio FX',`<div style="padding:10px;max-width:520px"><p style="margin:0 0 10px;font-size:13px">${why}</p><p style="margin:0 0 10px;font-size:11px;color:#7f93ab">Detalle técnico: ${String((err&&err.name)||'')} ${String((err&&err.message)||'').replace(/[<&]/g,'')}</p>
   <div style="display:flex;flex-direction:column;gap:8px"><button class="gold" onclick="audioPicker()">⚙ Elegir otra entrada de audio</button><button onclick="audioScreen()">🖥 Usar el sonido de la PC (compartir pantalla con audio)</button><button onclick="closeModal()">Cerrar</button></div></div>`);
 }
 window.audioScreen=async function(){
