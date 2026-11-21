@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BARRIOS PRO - Controlador de Iluminación DMX</title>
-<meta name="barrios-version" content="7.3.0">
+<meta name="barrios-version" content="7.4.0">
 <style>
 :root{
   --bg:#0b0f17;--bg2:#151d2b;--bg3:#1e293b;--line:#324258;--txt:#e6eef8;--mut:#95a8c0;
@@ -72,7 +72,7 @@ input[type=text],input[type=number],select{background:#111926;border:1px solid #
 <body>
 <div id="app">
 <header class="topbar">
-  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.3.0</div></div>
+  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.4.0</div></div>
   <div class="topbtns">
     <button onclick="openTool('Nuevo Show')">📄 Nuevo</button>
     <button onclick="openTool('Abrir Show')">📂 Abrir</button>
@@ -3702,16 +3702,39 @@ const n=Math.max(1,Math.round(len/.3));
 for(let i=0;i<n;i++){const p0=add(a,mul(d,len*i/n)),p1=add(a,mul(d,len*(i+1)/n));
 for(let k=0;k<4;k++){const o0=off[k],o1=off[(k+1)%4];
 if(i%2)line(L,add(p0,o1),add(p1,o0),TK);else line(L,add(p0,o0),add(p1,o1),TK)}}}
+/* ---- luces de decoración (par en el piso apuntando arriba, pegado a un truss) + ambiente ---- */
+let UPL=[],UPLSET=new Set(),AMB=[0,0,0];
+function dseg3(p,a,b){const ab=sub(b,a),L2=dot(ab,ab)||1e-6;let t=Math.max(0,Math.min(1,dot(sub(p,a),ab)/L2));const q=add(a,mul(ab,t));return Math.hypot(p[0]-q[0],p[1]-q[1],p[2]-q[2])}
+function prepLights(){UPL=[];UPLSET=new Set();let ar=0,ag=0,ab=0;const total=state.fixtures.length,segs=[];trussSegments().forEach(s=>{segs.push(s);if(s.legA)segs.push({a:[s.a[0],0,s.a[2]],b:s.a});if(s.legB)segs.push({a:[s.b[0],0,s.b[2]],b:s.b})});
+state.fixtures.forEach((f,idx)=>{const v=f.values||{},p0=getFixturePos3D(idx,total),pos=[p0.x,p0.y,p0.z];
+const dv=Number.isFinite(+v.Dimmer)?+v.Dimmer:255,dim=dv/255*(state.master/100)*((v.Shutter===undefined||v.Shutter===null||v.Shutter>20)?1:0);
+let r=v.Red,g=v.Green,b=v.Blue;if(r===undefined&&g===undefined&&b===undefined){r=g=b=255}
+r=(r||0)/255;g=(g||0)/255;b=(b||0)/255;if(v.White){const k=v.White/255*.6;r=Math.min(1,r+k);g=Math.min(1,g+k);b=Math.min(1,b+k)}
+ar+=r*dim;ag+=g*dim;ab+=b*dim;
+if(modelOf(f)!=='par'||pos[1]>1)return;
+const dir=f.orient?oframe(f.orient).d:aim(v.Pan??128,v.Tilt??155);if(dir[1]<.45)return;
+let near=1e9;segs.forEach(s=>{near=Math.min(near,dseg3(pos,s.a,s.b))});if(near>1.4)return;
+UPLSET.add(f.id);if(dim>.02)UPL.push({pos,dir,col:[r,g,b],dim})});
+const k=1/Math.max(4,total);AMB=[Math.min(1,ar*k),Math.min(1,ag*k),Math.min(1,ab*k)]}
+function trussLit(a,b,cc){if(!UPL.length){truss(a,b,cc);return}
+const len=Math.hypot(b[0]-a[0],b[1]-a[1],b[2]-a[2]),n=Math.max(1,Math.ceil(len/.4)),d=sub(b,a);
+for(let i=0;i<n;i++){const p0=add(a,mul(d,i/n)),p1=add(a,mul(d,(i+1)/n)),q=add(a,mul(d,(i+.5)/n));let I=[0,0,0],tot=0;
+UPL.forEach(u=>{const w=sub(q,u.pos),L=Math.hypot(w[0],w[1],w[2]);if(L<.05)return;const cs=dot(w,u.dir)/L;if(cs<.45)return;
+const k=u.dim*Math.min(1,(cs-.45)/.35)/(1+(L/2.4)*(L/2.4))*1.7;I[0]+=u.col[0]*k;I[1]+=u.col[1]*k;I[2]+=u.col[2]*k;tot+=k});
+if(tot<.02){truss(p0,p1,cc);continue}
+const base=cc||TC,col=[Math.min(1,base[0]*.45+I[0]*1.2),Math.min(1,base[1]*.45+I[1]*1.2),Math.min(1,base[2]*.45+I[2]*1.2),1];
+truss(p0,p1,cc||col);
+const nc=[I[0]/tot,I[1]/tot,I[2]/tot];disc(AT,q,CR,CU,.3+.4*Math.min(1,tot),10,nc,Math.min(.5,tot*.45),0)}}
 function drawTruss(){trussSegments().forEach(s=>{const isSel=E.selT===s.id,isHov=E.hover&&E.hover.type==='truss'&&E.hover.id===s.id,c=isSel?[1,.8,.1,1]:isHov?[.85,.95,1,1]:null;
-truss(s.a,s.b,c);const lc=c;
-if(s.legA)truss([s.a[0],0,s.a[2]],s.a,lc);if(s.legB)truss([s.b[0],0,s.b[2]],s.b,lc)})}
+trussLit(s.a,s.b,c);const lc=c;
+if(s.legA)trussLit([s.a[0],0,s.a[2]],s.a,lc);if(s.legB)trussLit([s.b[0],0,s.b[2]],s.b,lc)})}
 
 /* ---------- escenario ---------- */
 function venue(){const v=state.venue,hw=v.width/2,hd=v.depth/2,H=v.height;
-quad(S,[-hw,0,-hd],[hw,0,-hd],[hw,0,hd],[-hw,0,hd],[.035,.04,.055,1]);
+quad(S,[-hw,0,-hd],[hw,0,-hd],[hw,0,hd],[-hw,0,hd],[.035+AMB[0]*.1,.04+AMB[1]*.1,.055+AMB[2]*.1,1]);
 const gc=[.2,.3,.5,.16];for(let x=-Math.floor(hw);x<=hw;x++)line(L,[x,.005,-hd],[x,.005,hd],gc);
 for(let z=-Math.floor(hd);z<=hd;z++)line(L,[-hw,.005,z],[hw,.005,z],gc);
-const wc=[.06,.09,.16,.28];
+const wc=[.06+AMB[0]*.14,.09+AMB[1]*.14,.16+AMB[2]*.14,.28];
 quad(G,[-hw,0,-hd],[hw,0,-hd],[hw,H,-hd],[-hw,H,-hd],wc);
 quad(G,[-hw,0,-hd],[-hw,0,hd],[-hw,H,hd],[-hw,H,-hd],wc);
 quad(G,[hw,0,hd],[hw,0,-hd],[hw,H,-hd],[hw,H,hd],wc);
@@ -3787,6 +3810,7 @@ else{const c=add(pv,mul(dir,.04));slab(S,c,rt,up,dir,.16,.1,.1,body);front=add(c
 if(state.selected.includes(f.id)){const t=add(pos,[0,.18,0]);
 [[.1,0],[0,.1],[-.1,0],[0,-.1]].forEach((q,i,A)=>{const n=A[(i+1)%4];line(L,add(t,[q[0],q[1],0]),add(t,[n[0],n[1],0]),[1,.8,0,1])})}
 if(dim<=.02)return;
+if(UPLSET.has(f.id)){disc(AT,[pos[0],.02,pos[2]],[1,0,0],[0,0,1],.75,16,col,Math.min(.6,dim*.55),0);disc(AT,add(front,mul(dir,.05)),CR,CU,.22,12,col,Math.min(.9,dim),0);return}
 if(m==='laser'){disc(AT,add(front,mul(dir,.05)),CR,CU,.15,12,col,Math.min(.9,dim*.9),0);
 const sp=+(v.DynamicSpeed??v.Speed??128),ph=now*(.00018+sp/255*.0018),gfx=+(v.GraphicFx??0),gs=+(v.GraphicSelection??v.Gobo??0),mf=+(v.MacroFx??v.Macro??0),pr=+(v.PatternRotate??0);
 let mode=Math.floor((gs/256)*10+(gfx/256)*2+(mf/256))%10;if(f.ranges&&f.ranges.lista){const mv=+v[f.ranges.atributo]||0,ix=f.ranges.lista.findIndex(q=>mv>=q.desde&&mv<=q.hasta);if(ix>0)mode=(ix-1)%10}const rot=ph+(pr/255)*6.2832,sz=.65+(+(v.PatternSize??128)/255)*.8;
@@ -3821,7 +3845,7 @@ const vertY=(r,x,z)=>{const w0=[r.o[0]-x,r.o[1],r.o[2]-z],b=r.d[1],d=dot(r.d,w0)
 const dSeg2=(px,py,ax,ay,bx,by)=>{const dx=bx-ax,dy=by-ay,l2=dx*dx+dy*dy;let t=l2?((px-ax)*dx+(py-ay)*dy)/l2:0;t=Math.max(0,Math.min(1,t));return Math.hypot(px-(ax+dx*t),py-(ay+dy*t))};
 const handlesOf=s=>s.kind==='tower'?[{k:'top',p:s.b}]:[{k:'a',p:s.a},{k:'b',p:s.b}];
 const fxPos=i=>{const p=getFixturePos3D(i,state.fixtures.length);return[p.x,p.y,p.z]};
-window.BARRIOS_E3D=E;E.fxScreen=id=>{const i=state.fixtures.findIndex(f=>f.id===id);if(i<0)return null;const p=fxPos(i),s=toS([p[0],p[1]-hangOf(state.fixtures[i],p),p[2]]);return s&&{x:s[0],y:s[1]}};
+window.BARRIOS_E3D=E;E.dbg=()=>[UPL.length,UPLSET.size,AMB,state.fixtures.slice(0,2).map(f=>[modelOf(f),f.orient,getFixturePos3D(state.fixtures.indexOf(f),state.fixtures.length)])];E.fxScreen=id=>{const i=state.fixtures.findIndex(f=>f.id===id);if(i<0)return null;const p=fxPos(i),s=toS([p[0],p[1]-hangOf(state.fixtures[i],p),p[2]]);return s&&{x:s[0],y:s[1]}};
 E.trScreen=(id,w)=>{const s=trussSegments().find(q=>q.id===id);if(!s)return null;const p=w==='a'?s.a:w==='b'?s.b:w==='top'?s.b:mul(add(s.a,s.b),.5),r=toS(p);return r&&{x:r[0],y:r[1]}};
 function pick(ex,ey){
 const segs=trussSegments(),sel=E.selT&&segs.find(s=>s.id===E.selT);
@@ -4028,7 +4052,7 @@ if(cam.auto&&!drag&&!E.act)cam.yaw+=.0035;
 const cp=Math.cos(cam.pitch),eye=add(cam.t,[Math.sin(cam.yaw)*cp*cam.dist,Math.sin(cam.pitch)*cam.dist,Math.cos(cam.yaw)*cp*cam.dist]);
 const vw=look(eye,cam.t),VPm=mm(persp(.9,W/H,.1,300),vw);gl.uniformMatrix4fv(uM,false,new Float32Array(VPm));E.VP=VPm;E.EYE=eye;E.cw=cv.clientWidth||1;E.ch=cv.clientHeight||1;
 S=[];G=[];L=[];AT=[];AL=[];
-venue();const n=state.fixtures.length;state.fixtures.forEach((f,i)=>fixture(f,i,n,now));drawEdit();
+prepLights();venue();const n=state.fixtures.length;state.fixtures.forEach((f,i)=>fixture(f,i,n,now));drawEdit();
 gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);gl.depthMask(true);gl.disable(gl.BLEND);
 flush(gl.TRIANGLES,S);
 gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);flush(gl.LINES,L);
