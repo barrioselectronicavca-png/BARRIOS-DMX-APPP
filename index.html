@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BARRIOS PRO - Controlador de Iluminación DMX</title>
-<meta name="barrios-version" content="6.2.0">
+<meta name="barrios-version" content="7.0.0">
 <style>
 :root{
   --bg:#0b0f17;--bg2:#151d2b;--bg3:#1e293b;--line:#324258;--txt:#e6eef8;--mut:#95a8c0;
@@ -416,6 +416,7 @@ function ensureCoreGroups() {
 }
 ensureCoreGroups();
 
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}catch(e){}}
 function selFixtures(){return state.fixtures.filter(f=>state.selected.includes(f.id))}
 function primary(){return selFixtures()[0]||state.fixtures[0]}
@@ -486,10 +487,10 @@ function updateDmxBuffer() {
       if (attr === 'Dimmer') val = Math.round((f.values.Dimmer ?? 255) * masterScale);
       else if (attr === 'Pan') val = Math.round(f.values.Pan ?? 128);
       else if (attr === 'Tilt') val = Math.round(f.values.Tilt ?? 155);
-      else if (attr === 'Red') val = Math.round((f.values.Red ?? 0) * (f.channelMap.includes('Dimmer') ? 1 : masterScale));
-      else if (attr === 'Green') val = Math.round((f.values.Green ?? 0) * (f.channelMap.includes('Dimmer') ? 1 : masterScale));
-      else if (attr === 'Blue') val = Math.round((f.values.Blue ?? 0) * (f.channelMap.includes('Dimmer') ? 1 : masterScale));
-      else if (attr === 'White') val = Math.round((f.values.White ?? 0) * (f.channelMap.includes('Dimmer') ? 1 : masterScale));
+      else if (attr === 'Red') val = Math.round((f.values.Red ?? 0) * (f.channelMap.includes('Dimmer') ? 1 : masterScale * (f.values.Dimmer ?? 255) / 255));
+      else if (attr === 'Green') val = Math.round((f.values.Green ?? 0) * (f.channelMap.includes('Dimmer') ? 1 : masterScale * (f.values.Dimmer ?? 255) / 255));
+      else if (attr === 'Blue') val = Math.round((f.values.Blue ?? 0) * (f.channelMap.includes('Dimmer') ? 1 : masterScale * (f.values.Dimmer ?? 255) / 255));
+      else if (attr === 'White') val = Math.round((f.values.White ?? 0) * (f.channelMap.includes('Dimmer') ? 1 : masterScale * (f.values.Dimmer ?? 255) / 255));
       else if (attr === 'Strobe') val = Math.round(f.values.Strobe ?? 0);
       else if (attr === 'Shutter') val = Math.round(f.values.Shutter ?? 255);
       else if (attr === 'Iris') val = Math.round(f.values.Iris ?? 255);
@@ -1458,13 +1459,13 @@ function resetIndividualTrusses() {
 function renderGroups(){
   $('#groupGrid').innerHTML=state.groups.map(g=>{
     const isSel = state.activeGroupId === g.id;
-    return `<button class="${isSel ? 'gold' : ''}" onclick="selectGroup(${g.id})"><b>${g.id}</b><br>${g.name}<br><small style="opacity:.75">(${g.ids.length})</small></button>`;
+    return `<button class="${isSel ? 'gold' : ''}" onclick="selectGroup(${g.id})"><b>${g.id}</b><br>${esc(g.name)}<br><small style="opacity:.75">(${g.ids.length})</small></button>`;
   }).join('');
 }
 
 function renderFixtures(){
   $('#fixCount').textContent=state.fixtures.length;
-  $('#fixtureList').innerHTML=state.fixtures.map(f=>`<div class="fix ${state.selected.includes(f.id)?'sel':''}" onclick="selectFixture(${f.id},event)"><span>${f.id}</span><span>${f.name}</span><span>${f.addr}</span><span>${f.ch}ch</span></div>`).join('');
+  $('#fixtureList').innerHTML=state.fixtures.map(f=>`<div class="fix ${state.selected.includes(f.id)?'sel':''}" onclick="selectFixture(${f.id},event)"><span>${f.id}</span><span>${esc(f.name)}</span><span>${f.addr}</span><span>${f.ch}ch</span></div>`).join('');
   let p=primary();
   if (p) {
     if (state.selected.length > 1) {
@@ -3386,7 +3387,7 @@ function openWorkspace(name){
       <div class="wscard">
         <h3>Grupos Existentes (Agregar / Quitar Luces)</h3>
         <table class="tbl"><tr><th>#</th><th>Grupo</th><th>Luces</th><th>Acciones</th></tr>`+
-        state.groups.map(g=>`<tr><td>${g.id}</td><td><b>${g.name}</b></td><td>${g.ids.length} eq.</td><td style="white-space:nowrap"><button class="gold" style="padding:2px 6px;font-size:10px" onclick="openEditGroupModal(${g.id})">✎ Luces</button> <button style="padding:2px 6px;font-size:10px" onclick="selectGroup(${g.id});closeModal()">Marcar</button> ${g.id>5?`<button style="padding:2px 6px;font-size:10px;background:#4a1c24;border-color:#8f3242;color:#fff" onclick="deleteGroup(${g.id})">✕</button>`:''}</td></tr>`).join('')+
+        state.groups.map(g=>`<tr><td>${g.id}</td><td><b>${esc(g.name)}</b></td><td>${g.ids.length} eq.</td><td style="white-space:nowrap"><button class="gold" style="padding:2px 6px;font-size:10px" onclick="openEditGroupModal(${g.id})">✎ Luces</button> <button style="padding:2px 6px;font-size:10px" onclick="selectGroup(${g.id});closeModal()">Marcar</button> ${g.id>5?`<button style="padding:2px 6px;font-size:10px;background:#4a1c24;border-color:#8f3242;color:#fff" onclick="deleteGroup(${g.id})">✕</button>`:''}</td></tr>`).join('')+
         `</table>
       </div>
     </div>`;
@@ -3606,7 +3607,7 @@ function loadShowJSON(event){
   reader.readAsText(file);
 }
 function saveShow(){save();notify('Show guardado correctamente')}
-function updateAddr(id,v){let f=state.fixtures.find(x=>x.id===id);if(f)f.addr=+v;save();renderMain()}
+function updateAddr(id,v){let f=state.fixtures.find(x=>x.id===id);if(f)f.addr=Math.min(512,Math.max(1,Math.round(+v)||1));save();renderMain()}
 
 document.addEventListener('click',e=>{
   let b=e.target.closest('button');if(!b)return;
@@ -4025,6 +4026,251 @@ try{render(now)}catch(e){console.error('3D Real:',e);on=false;cv.style.display='
 /* mientras el 3D real esta activo, no se dibuja la vista clasica (ahorra CPU) */
 const orig=window.drawStage;if(typeof orig==='function')window.drawStage=function(n){if(!on)return orig(n)};
 requestAnimationFrame(loop);
+})();
+
+</script>
+<script>
+/* ===== BARRIOS 7.0 · CONSOLA (estilo grandMA, simplificada) ===== */
+(function(){
+'use strict';
+const $=s=>document.querySelector(s);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const C=window.BARRIOS70={};
+/* ---------- utilidades ---------- */
+const cueById=id=>state.cues.find(c=>c.id===id);
+const numFade=c=>{if(typeof c.fadeIn==='number')return c.fadeIn;const m=String(c.fade||'0').match(/[\d.]+/);return m?parseFloat(m[0]):0};
+const numDelay=c=>typeof c.delay==='number'?c.delay:0;
+const numFollow=c=>(typeof c.follow==='number'&&c.follow>0)?c.follow:0;
+function say(msg,bad){const o=$('#cmdOut');if(!o){notify(msg);return}o.textContent=msg;o.style.color=bad?'#ff6b7a':'#22df67';clearTimeout(say.t);say.t=setTimeout(()=>{o.textContent=''},6000)}
+C.say=say;
+/* ---------- CUES con tiempos (crossfade real) ---------- */
+const DISCRETE=/Gobo|Prism|Mode|Macro|Pattern|Control|Shutter|Strobe|Speed|Reset|Program|Auto/i;
+const snapAll=()=>state.fixtures.map(f=>({id:f.id,bp:f.basePan,bt:f.baseTilt,v:{...f.values}}));
+const tw={raf:0,follow:0,delay:0,prog:0,cue:null};
+function stopTween(){cancelAnimationFrame(tw.raf);clearTimeout(tw.follow);clearTimeout(tw.delay);tw.raf=0;tw.prog=0;tw.cue=null;const e=$('#goProg');if(e)e.style.width='0%'}
+function applySnap(sn,k,from){
+  sn.forEach((s,i)=>{const f=state.fixtures.find(x=>x.id===s.id);if(!f)return;
+    const a=from?from[i]:null;
+    if(!a||k>=1){if(s.bp!==undefined)f.basePan=s.bp;if(s.bt!==undefined)f.baseTilt=s.bt;f.values=Object.assign(f.values,s.v);return}
+    if(typeof s.bp==='number'&&typeof a.bp==='number')f.basePan=a.bp+(s.bp-a.bp)*k;
+    if(typeof s.bt==='number'&&typeof a.bt==='number')f.baseTilt=a.bt+(s.bt-a.bt)*k;
+    Object.keys(s.v).forEach(key=>{const x=a.v[key],y=s.v[key];
+      if(typeof x==='number'&&typeof y==='number'&&!DISCRETE.test(key))f.values[key]=Math.round(x+(y-x)*k);
+      else f.values[key]=(k>0?y:x);});
+  });
+}
+const origPlay=window.playCue;
+function goCue(id,quiet){
+  const c=cueById(id);if(!c)return say('Cue '+id+' no existe',true);
+  stopTween();
+  const from=snapAll();
+  origPlay(id);                       // aplica el estado destino al instante
+  const to=snapAll();
+  const T=numFade(c),D=numDelay(c);
+  const done=()=>{applySnap(to,1);tw.cue=null;const e=$('#goProg');if(e)e.style.width='0%';save();
+    if(typeof renderAttributes==='function')renderAttributes();
+    const fo=numFollow(c);if(fo>0){tw.follow=setTimeout(()=>C.next(true),fo*1000)}};
+  updateCueLabel();
+  if(T<=0&&D<=0){done();return}
+  applySnap(from,0,from);              // vuelve al inicio y hace el fade
+  tw.cue=id;const t0=performance.now()+D*1000;
+  const step=now=>{
+    const k=T<=0?1:clamp((now-t0)/(T*1000),0,1);
+    if(now>=t0)applySnap(to,k,from);
+    const e=$('#goProg');if(e)e.style.width=Math.round(k*100)+'%';
+    if(k>=1&&now>=t0){done();return}
+    tw.raf=requestAnimationFrame(step)};
+  tw.raf=requestAnimationFrame(step);
+}
+window.playCue=goCue;
+function activeIdx(){return state.cues.findIndex(c=>c.id===state.activeSceneId)}
+C.next=function(fromFollow){if(!state.cues.length)return say('No hay cues. Guardá una escena primero.',true);
+  const i=activeIdx();const n=state.cues[(i+1)%state.cues.length];goCue(n.id);say('GO → '+n.name)};
+C.back=function(){if(!state.cues.length)return;const i=activeIdx();const n=state.cues[i<=0?state.cues.length-1:i-1];goCue(n.id);say('BACK → '+n.name)};
+function updateCueLabel(){const c=cueById(state.activeSceneId),e=$('#cueNow');if(e)e.textContent=c?('Cue '+c.id+' · '+c.name):'Sin cue';}
+/* ---- tabla de cues editable (fade / delay / follow) ---- */
+const esc=window.esc||(s=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])));
+window.cueSet=function(id,k,v){const c=cueById(id);if(!c)return;v=parseFloat(v);if(!isFinite(v)||v<0)v=0;
+  if(k==='fadeIn'){c.fadeIn=v;c.fade=v.toFixed(1)+'s'}else if(k==='delay')c.delay=v;else if(k==='follow')c.follow=v;save()};
+window.cueUpdate=function(id){const c=cueById(id);if(!c)return;
+  c.snapshot={selected:[...state.selected],activeGroupId:state.activeGroupId,effectSize:state.effectSize,motion:{...state.motion},activeEffects:[...activeEffects],
+    fixtures:state.fixtures.map(f=>({id:f.id,basePan:f.basePan,baseTilt:f.baseTilt,values:{...f.values}}))};
+  save();say('Cue '+id+' actualizado con el estado actual')};
+window.cueMove=function(id,d){const i=state.cues.findIndex(c=>c.id===id),j=i+d;if(i<0||j<0||j>=state.cues.length)return;
+  const t=state.cues[i];state.cues[i]=state.cues[j];state.cues[j]=t;save();renderCueTable()};
+window.renderCueTable=function(){
+  const el=$('#cueTable');if(!el)return;
+  const ni=(id,k,v)=>`<input type="number" min="0" step="0.1" value="${v}" style="width:46px;padding:1px 3px;font-size:10px" onchange="cueSet(${id},'${k}',this.value)" onclick="event.stopPropagation()">`;
+  el.innerHTML='<tr><th>#</th><th>Cue</th><th title="Segundos de transición">Fade</th><th title="Espera antes de empezar">Delay</th><th title="Pasa solo al siguiente cue tras N segundos (0 = manual)">Sigue</th><th>Efectos</th><th>Acciones</th></tr>'+
+  state.cues.map(c=>`<tr style="${state.activeSceneId===c.id?'background:#173d26;color:#fff':''}">
+   <td><b>${c.id}</b></td><td><b>${esc(c.name)}</b></td><td>${ni(c.id,'fadeIn',numFade(c))}</td><td>${ni(c.id,'delay',numDelay(c))}</td><td>${ni(c.id,'follow',numFollow(c))}</td><td>${esc(c.fx||'')}</td>
+   <td style="white-space:nowrap"><button class="${state.activeSceneId===c.id?'gold':''}" style="padding:2px 6px;font-size:10px" onclick="playCue(${c.id})">▶ GO</button>
+   <button style="padding:2px 5px;font-size:10px" onclick="cueUpdate(${c.id})" title="Guardar el estado actual dentro de este cue">⟳</button>
+   <button style="padding:2px 4px;font-size:10px" onclick="cueMove(${c.id},-1)" title="Subir">↑</button><button style="padding:2px 4px;font-size:10px" onclick="cueMove(${c.id},1)" title="Bajar">↓</button>
+   <button style="padding:2px 5px;font-size:10px" onclick="openRenameSceneModal(${c.id})" title="Renombrar">✎</button>
+   <button style="padding:2px 5px;font-size:10px;background:#4a1c24;border-color:#8f3242;color:#fff" onclick="deleteScene(${c.id})" title="Eliminar">✕</button></td></tr>`).join('');
+  updateCueLabel();
+};
+/* ---------- BLACKOUT / CLEAR / LOCATE / TAP ---------- */
+C.bo=false;let preMaster=100;
+C.toggleBO=function(on){const want=on===undefined?!C.bo:!!on;if(want===C.bo)return;C.bo=want;
+  if(want){preMaster=state.master;state.master=0}else{state.master=preMaster};
+  const b=$('#btnBO');if(b){b.classList.toggle('boOn',want);b.textContent=want?'■ BLACKOUT ACTIVO':'☾ BLACKOUT'}
+  const t=$('#masterTxt');if(t)t.textContent='Master '+state.master+'%';save();say(want?'Blackout: todo apagado':'Blackout desactivado')};
+const origSetFader=window.setFader;
+window.setFader=function(i,v){if(+i===5&&C.bo){preMaster=+v;return}origSetFader(i,v)};
+const origUpd=window.updateDmxBuffer;
+window.updateDmxBuffer=function(){origUpd.apply(this,arguments);
+  if(!C.bo)return;
+  state.fixtures.forEach(f=>{const st=Math.max(1,f.addr||1),map=f.channelMap||[];
+    for(let i=0;i<f.ch;i++){const ch=st+i;if(ch>512)break;const a=map[i]||'';
+      if(a==='Pan'||a==='Tilt'||a==='Speed')continue;dmxUniverse[ch]=0}})};
+C.clear=function(){if(C.hl)C.toggleHL(false);toggleQuickEffect('stopall');say('Limpio: efectos detenidos y posiciones restauradas')};
+C.hl=false;const hlStash=new Map();
+C.toggleHL=function(on){const want=on===undefined?!C.hl:!!on;if(want===C.hl)return;C.hl=want;
+  selFixtures().forEach(f=>{
+    if(want){hlStash.set(f.id,{...f.values});Object.assign(f.values,{Dimmer:255,Red:255,Green:255,Blue:255,White:255,Shutter:255,Strobe:0})}
+    else if(hlStash.has(f.id)){f.values=Object.assign(f.values,hlStash.get(f.id));hlStash.delete(f.id)}});
+  if(!want)hlStash.clear();
+  const b=$('#btnHL');if(b)b.classList.toggle('gold',want);save();renderAttributes&&renderAttributes();say(want?'Localizar: luces seleccionadas al 100% blanco':'Localizar desactivado')};
+const taps=[];
+C.tap=function(){const n=performance.now();if(taps.length&&n-taps[taps.length-1]>2500)taps.length=0;taps.push(n);if(taps.length>6)taps.shift();
+  if(taps.length>=2){const iv=[];for(let i=1;i<taps.length;i++)iv.push(taps[i]-taps[i-1]);const avg=iv.reduce((a,b)=>a+b,0)/iv.length;
+    state.bpm=clamp(Math.round(60000/avg),40,220);state.faders[3]=clamp(Math.round((state.bpm-60)/1.4),0,100);renderFaders();refreshStatus();save()}
+  const b=$('#btnTap');if(b)b.textContent='TAP '+state.bpm};
+/* ---------- PATCH: conflictos y auto-patch ---------- */
+C.conflicts=function(){const bad=new Set(),r=state.fixtures.map(f=>[Math.max(1,f.addr||1),Math.max(1,f.addr||1)+f.ch-1,f.id]);
+  r.forEach((a,i)=>{if(a[1]>512)bad.add(a[2]);r.forEach((b,j)=>{if(i<j&&a[0]<=b[1]&&b[0]<=a[1]){bad.add(a[2]);bad.add(b[2])}})});return bad};
+C.autopatch=function(){let a=1;for(const f of state.fixtures){if(a+f.ch-1>512){say('No entran todas las luces en 1 universo (512 canales)',true);save();renderMain();return}f.addr=a;a+=f.ch}
+  save();renderMain();say('Direcciones DMX ordenadas desde 1 sin solaparse')};
+function markConflicts(){const bad=C.conflicts(),w=$('#patchWarn');
+  [...document.querySelectorAll('#fixtureList .fix')].forEach((row,i)=>{const f=state.fixtures[i];if(!f)return;const isBad=bad.has(f.id);row.style.outline=isBad?'1px solid #ff6b7a':'';row.title=isBad?'Dirección DMX solapada con otra luz o fuera de 512':''});
+  if(w){w.style.display=bad.size?'inline-block':'none';w.textContent='⚠ '+bad.size+' luces con DMX solapado · ARREGLAR'}}
+const origRF=window.renderFixtures;
+window.renderFixtures=function(){origRF.apply(this,arguments);markConflicts()};
+/* ---------- LÍNEA DE COMANDOS ---------- */
+const COL={rojo:[255,0,0],red:[255,0,0],verde:[0,255,60],green:[0,255,60],azul:[20,60,255],blue:[20,60,255],amarillo:[255,220,0],yellow:[255,220,0],cian:[0,230,255],cyan:[0,230,255],violeta:[170,0,255],morado:[170,0,255],violet:[170,0,255],blanco:[255,255,255],white:[255,255,255],naranja:[255,120,0],amber:[255,160,0],ambar:[255,160,0],rosa:[255,60,160],magenta:[255,0,200],calido:[255,190,110],cálido:[255,190,110],warm:[255,190,110]};
+const ATTR={dimmer:'Dimmer',pan:'Pan',tilt:'Tilt',zoom:'Zoom',focus:'Focus',foco:'Focus',gobo:'Gobo',strobe:'Strobe',estrobo:'Strobe',iris:'Iris',prism:'Prism',prisma:'Prism',shutter:'Shutter'};
+const FX={circle:'circle',circulo:'circle',círculo:'circle',fig8:'fig8',ocho:'fig8',sweep:'sweep',barrido:'sweep',tiltwave:'tiltwave',mirror:'mirror',cruzado:'mirror',sine:'sine',onda:'sine',pulse:'pulse',pulso:'pulse',chase:'chase',flash:'flash',rainbow:'rainbow',arcoiris:'rainbow',arcoíris:'rainbow',random:'random',aleatorio:'random'};
+function parseSel(s){
+  const t=s.replace(/\+/g,' + ').replace(/(^|\s)-(\s|$)/g,' - ').replace(/>/g,' thru ').split(/\s+/).filter(Boolean);
+  let set=new Set(),op='+',i=0,ok=false;
+  const ids=state.fixtures.map(f=>f.id);
+  const apply=arr=>{arr.forEach(x=>{if(op==='+')set.add(x);else set.delete(x)})};
+  while(i<t.length){const w=t[i];
+    if(w==='+'){op='+';i++;continue}if(w==='-'){op='-';i++;continue}
+    if(/^(all|todos|todas)$/.test(w)){apply(ids);ok=true;i++;continue}
+    if(/^(group|grupo|g)$/.test(w)){const g=state.groups.find(x=>String(x.id)===t[i+1]||String(x.name).toLowerCase()===String(t[i+1]));if(!g)return null;apply(g.ids||[]);ok=true;i+=2;continue}
+    if(/^(fixture|fix|luz|f|equipo)$/.test(w)){i++;continue}
+    if(/^\d+$/.test(w)){const a=+w;
+      if(/^(thru|al|hasta|a)$/.test(t[i+1]||'')&&/^\d+$/.test(t[i+2]||'')){const b=+t[i+2];apply(ids.filter(x=>x>=Math.min(a,b)&&x<=Math.max(a,b)));i+=3}
+      else{if(!ids.includes(a))return null;apply([a]);i++}ok=true;op='+';continue}
+    return null}
+  return ok?[...set]:null}
+const hist=[];let hi=0;
+function exec(s){
+  let m;
+  if(/^(go|next|siguiente|\+\+)$/.test(s))return C.next();
+  if(/^(back|prev|atras|atrás)$/.test(s))return C.back();
+  if(m=s.match(/^(goto|ir|cue)\s+(\d+)$/)){if(!cueById(+m[2]))return say('Cue '+m[2]+' no existe',true);goCue(+m[2]);return say('Cue '+m[2])}
+  if(/^(bo|blackout|apagon|apagón)$/.test(s))return C.toggleBO();
+  if(/^(clear|cl|limpiar)$/.test(s))return C.clear();
+  if(/^(hl|highlight|locate|loc|localizar)$/.test(s))return C.toggleHL();
+  if(/^(autopatch|auto-patch|ordenar)$/.test(s))return C.autopatch();
+  if(m=s.match(/^(master|gm)\s+(\d+)$/)){const v=clamp(+m[2],0,100);state.faders[5]=v;if(C.bo)preMaster=v;else{state.master=v}renderFaders();save();return say('Master '+v+'%')}
+  if(m=s.match(/^bpm\s+(\d+)$/)){state.bpm=clamp(+m[1],40,220);state.faders[3]=clamp(Math.round((state.bpm-60)/1.4),0,100);renderFaders();refreshStatus();save();return say('BPM '+state.bpm)}
+  if(m=s.match(/^(store|guardar|grabar)(?:\s+(.+))?$/)){quickSaveScene();try{closeModal()}catch(_){}if(m[2]){const c=state.cues[state.cues.length-1];c.name=m[2].replace(/\b\w/g,x=>x.toUpperCase());save();renderCueTable()}return say('Cue guardado')}
+  if(/^(update|actualizar)$/.test(s)){if(state.activeSceneId==null)return say('No hay cue activo',true);cueUpdate(state.activeSceneId);return}
+  if(m=s.match(/^(fx|efecto)\s+(\S+)$/)){const k=FX[m[2]];if(!k)return say('Efecto desconocido. Probá: '+Object.keys(FX).filter(x=>!/[íá]/.test(x)).slice(0,8).join(', '),true);toggleQuickEffect(k);return say('Efecto '+k+(activeEffects.has(k)?' ON':' OFF'))}
+  if(m=s.match(/^(color|col)\s+(\S+)$/)){const c=COL[m[2]];if(!c)return say('Color desconocido. Probá: rojo, azul, verde, blanco, amarillo…',true);applyColor(c,m[2]);renderAttributes();return say('Color '+m[2])}
+  if(m=s.match(/^(dimmer|pan|tilt|zoom|focus|foco|gobo|strobe|estrobo|iris|prism|prisma|shutter)\s+(\d+)(%?)$/)){let v=+m[2];if(m[3]==='%')v=Math.round(v*2.55);v=clamp(v,0,255);setAttr(ATTR[m[1]],v);return say(ATTR[m[1]]+' = '+v)}
+  // selección [at nivel]
+  let sel=s,lv=null;const ma=s.match(/^(.*?)\s*(?:\bat\b|\ba\b|@)\s*(full|out|\d+)\s*$/);if(ma){sel=ma[1];lv=ma[2]}
+  if(/^(full)$/.test(s)){sel='';lv='full'}if(/^(out)$/.test(s)){sel='';lv='out'}
+  if(sel){const r=parseSel(sel);if(!r)return say('No entiendo: "'+s+'". Ejemplos: 1 thru 5 at 50 · group 2 · color rojo · go',true);
+    state.selected=r.length?r:state.selected;state.activeGroupId=null}
+  if(lv!==null){const v=lv==='full'?100:lv==='out'?0:clamp(+lv,0,100);setAttr('Dimmer',Math.round(v*2.55));
+    if(lv!==null&&selFixtures().some(f=>!(f.channelMap||[]).includes('Dimmer')&&(f.channelMap||[]).includes('Red')))say('Nivel '+v+'% (luces RGB sin canal Dimmer: se aplica en la salida)');else say('Nivel '+v+'%')}
+  else if(sel)say(state.selected.length+' luz(es) seleccionada(s)');
+  save();renderMain();
+}
+C.run=function(raw){const s=String(raw||'').trim().toLowerCase().replace(/\s+/g,' ');if(!s)return;hist.push(raw);hi=hist.length;
+  s.split(';').map(x=>x.trim()).filter(Boolean).forEach(x=>{try{exec(x)}catch(e){say('Error: '+e.message,true)}})};
+/* ---------- EXPORTAR / IMPORTAR show ---------- */
+C.exportShow=function(){try{const blob=new Blob([JSON.stringify(state,null,1)],{type:'application/json'});const d=new Date(),p=n=>String(n).padStart(2,'0');
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='BARRIOS_show_'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes())+'.json';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);say('Show exportado a un archivo .json')}catch(e){say('No se pudo exportar: '+e.message,true)}};
+/* ---------- MIDI ---------- */
+const MKEY='barrios_midi_map_v1';let mmap={};try{mmap=JSON.parse(localStorage.getItem(MKEY)||'{}')}catch(e){}
+const MACT=[['f0','Fader Dimmer'],['f1','Fader Color'],['f2','Fader Move'],['f3','Fader FX Spd'],['f5','Fader Master'],['go','GO'],['back','BACK'],['bo','BLACKOUT'],['clear','CLEAR'],['hl','LOCALIZAR'],['tap','TAP']];
+let learning=null,midiAcc=null;
+function midiKey(st,d1){return (st&0xF0).toString(16)+':'+(st&0x0F)+':'+d1}
+function midiMsg(e){const [st,d1,d2]=e.data;const type=st&0xF0;if(type!==0x90&&type!==0xB0&&type!==0x80)return;
+  if(type===0x80)return;const key=midiKey(st,d1);
+  if(learning){mmap[key]=learning;try{localStorage.setItem(MKEY,JSON.stringify(mmap))}catch(_){}const n=(MACT.find(a=>a[0]===learning)||[])[1];learning=null;C.midiUI();say('MIDI: asignado a '+n);return}
+  const a=mmap[key];if(!a)return;
+  if(a[0]==='f'){const i=+a[1];const v=Math.round(d2/127*100);if(i===5&&C.bo)return;state.faders[i]=v;window.setFader(i,v);const inp=$('#faderInp'+i);if(inp)inp.value=v;const l=$('#faderVal'+i);if(l)l.textContent=v+'%';return}
+  if(type===0x90&&d2===0)return;
+  ({go:C.next,back:C.back,bo:()=>C.toggleBO(),clear:C.clear,hl:()=>C.toggleHL(),tap:C.tap})[a]&&({go:C.next,back:C.back,bo:()=>C.toggleBO(),clear:C.clear,hl:()=>C.toggleHL(),tap:C.tap})[a]()}
+C.midiInit=async function(){if(!navigator.requestMIDIAccess){C.midiStatus='Este equipo no ofrece MIDI.';return false}
+  try{midiAcc=await navigator.requestMIDIAccess();const bind=()=>{midiAcc.inputs.forEach(inp=>{inp.onmidimessage=midiMsg})};bind();midiAcc.onstatechange=()=>{bind();C.midiUI&&C.midiUI()};C.midiStatus='ok';return true}
+  catch(e){C.midiStatus='Permiso MIDI denegado: '+e.message;return false}};
+C.midiUI=function(){const names=midiAcc?[...midiAcc.inputs.values()].map(i=>i.name):[];
+  const rows=MACT.map(([k,n])=>{const keys=Object.keys(mmap).filter(x=>mmap[x]===k);return `<tr><td><b>${n}</b></td><td style="color:#9fb0c3">${keys.length?keys.join(', '):'—'}</td><td><button onclick="BARRIOS70.learn('${k}')" class="${learning===k?'gold':''}">${learning===k?'Mové el control…':'Aprender'}</button> <button onclick="BARRIOS70.unlearn('${k}')">✕</button></td></tr>`}).join('');
+  openModal('🎹 MIDI · Controladora',`<div style="padding:8px;max-width:640px"><p style="margin:0 0 6px">${names.length?'Dispositivos: <b>'+names.map(esc).join(', ')+'</b>':'<span style="color:#ff6b7a">No hay controladora MIDI conectada.</span> Enchufala por USB.'}</p>
+  <p style="margin:0 0 8px;color:#9fb0c3;font-size:12px">Tocá <b>Aprender</b> y movés una perilla, fader o botón de tu controladora. Faders = perillas/faders, botones = notas.</p>
+  <table style="width:100%;border-collapse:collapse">${rows}</table></div>`)};
+C.learn=function(k){learning=learning===k?null:k;C.midiUI()};C.unlearn=function(k){Object.keys(mmap).forEach(x=>{if(mmap[x]===k)delete mmap[x]});try{localStorage.setItem(MKEY,JSON.stringify(mmap))}catch(_){}C.midiUI()};
+C.openMidi=async function(){await C.midiInit();C.midiUI()};
+/* ---------- DOM de la consola ---------- */
+const bar=document.createElement('div');bar.className='console70';
+bar.innerHTML=`<button id="btnBack" title="Cue anterior (Shift+Espacio)">◀ BACK</button><button id="btnGo" class="goBtn" title="Siguiente cue (Espacio)">▶ GO</button>
+<div class="cueNow"><span id="cueNow">Sin cue</span><i id="goProg"></i></div>
+<input id="cmdLine" placeholder="Comando: 1 thru 5 at 50 · group 2 · color rojo · go · bo · ?" autocomplete="off" spellcheck="false"><span id="cmdOut"></span>
+<button id="patchWarn" style="display:none" class="warnBtn"></button>
+<button id="btnBO" class="boBtn" title="Apaga todo (tecla B)">☾ BLACKOUT</button><button id="btnClr" title="Detiene efectos (Limpiar)">✕ CLEAR</button><button id="btnHL" title="Pone la selección al 100% blanco (tecla H)">◎ LOCALIZAR</button>
+<button id="btnTap" title="Marcá el tempo tocando (tecla T)">TAP 128</button><button id="btnMidi" title="Controladora MIDI">🎹 MIDI</button><button id="btnExp" title="Guardar el show en un archivo (Ctrl+S)">💾 EXPORTAR</button>`;
+const st=document.querySelector('footer.statusbar');if(st)st.parentNode.insertBefore(bar,st);
+const css=document.createElement('style');css.textContent=`#app{grid-template-rows:34px 56px 1fr 40px 22px!important}
+.console70{display:flex;align-items:center;gap:5px;background:linear-gradient(#1a2433,#111926);border:1px solid var(--line);border-radius:8px;padding:3px 6px;overflow:hidden;min-width:0}
+.console70 button{padding:3px 8px;font-size:11px;white-space:nowrap}.console70 .goBtn{background:#1c5a2e;border-color:#2f9d4f;font-weight:700;color:#fff}
+.console70 .boBtn{background:#3a1b22;border-color:#8f3242;color:#fff;font-weight:700}.console70 .boBtn.boOn{background:#d6263d;animation:bo70 .7s infinite alternate}
+@keyframes bo70{to{filter:brightness(1.6)}}.console70 .warnBtn{background:#5a3b0b;border-color:#e6a117;color:#ffd27a;font-weight:700}
+.console70 .cueNow{position:relative;min-width:130px;max-width:190px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;font-size:11px;color:#e6eef8;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;background:#0b1220}
+.console70 .cueNow i{position:absolute;left:0;bottom:0;height:3px;width:0;background:var(--gold)}
+.console70 #cmdLine{flex:1;min-width:120px;background:#070c14;color:#cfe4ff;border:1px solid var(--line);border-radius:6px;padding:5px 8px;font:12px Consolas,monospace}
+.console70 #cmdOut{font-size:11px;max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}`;document.head.appendChild(css);
+$('#btnGo').onclick=()=>C.next();$('#btnBack').onclick=()=>C.back();$('#btnBO').onclick=()=>C.toggleBO();$('#btnClr').onclick=()=>C.clear();$('#btnHL').onclick=()=>C.toggleHL();
+$('#btnTap').onclick=()=>C.tap();$('#btnMidi').onclick=()=>C.openMidi();$('#btnExp').onclick=()=>C.exportShow();$('#patchWarn').onclick=()=>{if(confirm('Se reordenan las direcciones DMX desde 1 sin solaparse. ¿Continuar?'))C.autopatch()};
+const cl=$('#cmdLine');
+cl.addEventListener('keydown',e=>{e.stopPropagation();
+  if(e.key==='Enter'){const v=cl.value;cl.value='';if(v.trim()==='?'||/^(ayuda|help)$/i.test(v.trim()))helpModal();else C.run(v)}
+  else if(e.key==='ArrowUp'){if(hi>0){hi--;cl.value=hist[hi]||''}e.preventDefault()}
+  else if(e.key==='ArrowDown'){if(hi<hist.length){hi++;cl.value=hist[hi]||''}e.preventDefault()}
+  else if(e.key==='Escape'){cl.value='';cl.blur()}});
+function helpModal(){openModal('Comandos',`<div style="padding:10px;max-width:680px;line-height:1.55;font-size:13px">
+<p><b>Seleccionar:</b> <code>1 thru 5</code> · <code>1 + 4 + 7</code> · <code>all</code> · <code>group 2</code> · <code>1 thru 8 - 3</code></p>
+<p><b>Nivel:</b> <code>at 50</code> · <code>at full</code> · <code>at out</code> · <code>1 thru 4 at 75</code> · <code>full</code></p>
+<p><b>Color / efectos:</b> <code>color rojo</code> · <code>fx circulo</code> · <code>fx stop</code>(= clear)</p>
+<p><b>Atributos:</b> <code>pan 128</code> · <code>tilt 90</code> · <code>zoom 200</code> · <code>gobo 40</code> · <code>strobe 10</code> · <code>dimmer 50%</code></p>
+<p><b>Cues:</b> <code>go</code> · <code>back</code> · <code>goto 3</code> · <code>store nombre</code> · <code>update</code></p>
+<p><b>Otros:</b> <code>bo</code> (blackout) · <code>clear</code> · <code>hl</code> (localizar) · <code>master 80</code> · <code>bpm 124</code> · <code>autopatch</code></p>
+<p>Varios comandos juntos con <code>;</code> → <code>group 1; color azul; at 80</code></p>
+<p style="color:#9fb0c3"><b>Teclas:</b> Espacio = GO · Shift+Espacio = BACK · B = blackout · H = localizar · T = tap tempo · / = línea de comandos · Ctrl+S = exportar</p></div>`)}
+const fxStop=exec;
+window.addEventListener('keydown',e=>{const tg=(e.target&&e.target.tagName)||'';if(/INPUT|TEXTAREA|SELECT/.test(tg)||(e.target&&e.target.isContentEditable))return;
+  if(document.getElementById('modal')&&document.getElementById('modal').classList.contains('open')){if(e.key==='Escape')closeModal();return}
+  if(e.ctrlKey||e.metaKey){if(e.key==='s'||e.key==='S'){e.preventDefault();C.exportShow()}return}
+  if(e.altKey)return;const k=e.key;
+  if(k===' '){e.preventDefault();e.shiftKey?C.back():C.next()}
+  else if(k==='b'||k==='B')C.toggleBO();else if(k==='h'||k==='H')C.toggleHL();else if(k==='t'||k==='T')C.tap();
+  else if(k==='/'){e.preventDefault();cl.focus()}});
+/* ---------- arreglos varios ---------- */
+const origUA=window.updateAddr;
+window.updateAddr=function(id,v){const f=state.fixtures.find(x=>x.id===id);if(f){let a=Math.round(+v);if(!isFinite(a)||a<1)a=1;if(a>512)a=512;f.addr=a;if(a+f.ch-1>512)say('Ojo: ese equipo se pasa del canal 512',true)}save();renderMain()};
+/* copia de seguridad automática (2 últimas) */
+try{const cur=localStorage.getItem(STORAGE_KEY);if(cur){const b1=localStorage.getItem('barrios_backup_1');if(b1!==cur){localStorage.setItem('barrios_backup_2',b1||cur);localStorage.setItem('barrios_backup_1',cur)}}}catch(e){}
+window.addEventListener('beforeunload',()=>{if(C.hl)C.toggleHL(false);if(C.bo){state.master=preMaster}try{save()}catch(e){}});
+renderCueTable();renderFixtures();C.tap.bpmInit=1;const bt=$('#btnTap');if(bt)bt.textContent='TAP '+state.bpm;
 })();
 
 </script>
