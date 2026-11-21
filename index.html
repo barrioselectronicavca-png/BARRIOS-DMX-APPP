@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BARRIOS PRO - Controlador de Iluminación DMX</title>
-<meta name="barrios-version" content="7.11.1">
+<meta name="barrios-version" content="7.12.0">
 <style>
 :root{
   --bg:#0b0f17;--bg2:#151d2b;--bg3:#1e293b;--line:#324258;--txt:#e6eef8;--mut:#95a8c0;
@@ -72,7 +72,7 @@ input[type=text],input[type=number],select{background:#111926;border:1px solid #
 <body>
 <div id="app">
 <header class="topbar">
-  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.11.1</div></div>
+  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.12.0</div></div>
   <div class="topbtns">
     <button onclick="openTool('Nuevo Show')">📄 Nuevo</button>
     <button onclick="openTool('Abrir Show')">📂 Abrir</button>
@@ -254,7 +254,7 @@ input[type=text],input[type=number],select{background:#111926;border:1px solid #
         <output id="asVelOut" style="min-width:34px;text-align:right;color:var(--gold)">50</output></div>
       <div class="qfx-strobe" style="margin-top:4px"><b style="color:var(--gold)">🎤 Show:</b>
         <select id="asStyleSel" style="flex:1" onchange="BARRIOS_AS&&BARRIOS_AS.setStyle(this.value)">
-          <option value="auto">AUTO · show completo (cambia solo)</option><option value="circle">Círculos al ritmo</option><option value="pulse">Pulso al bombo</option><option value="chase">Chase al ritmo</option><option value="fan">Abanico</option><option value="alt">Alterno izq/der</option><option value="cross">Cruce</option><option value="rainbow">Arcoíris rodante</option><option value="wave">Ola de luz</option><option value="snare">Golpes (bombo)</option><option value="burst">Strobe</option>
+          <option value="sub">⚡ SUB FLASH · un flash por cada bombo</option><option value="auto">AUTO · show completo (cambia solo)</option><option value="circle">Círculos al ritmo</option><option value="pulse">Pulso al bombo</option><option value="chase">Chase al ritmo</option><option value="fan">Abanico</option><option value="alt">Alterno izq/der</option><option value="cross">Cruce</option><option value="rainbow">Arcoíris rodante</option><option value="wave">Ola de luz</option><option value="snare">Golpes (bombo)</option><option value="burst">Strobe</option>
         </select><span id="asInfo" style="min-width:70px;text-align:right;color:var(--gold);font-size:11px">—</span></div>
       <div class="qfx-strobe" style="margin-top:4px"><b style="color:var(--gold)">⚡ Flash:</b>
         <select id="flashModeSel" style="flex:1" onchange="state.flashMode=this.value;save();if(!activeEffects.has('flash'))toggleQuickEffect('flash')">
@@ -4546,7 +4546,7 @@ async function begin(stream,label){
   audioCtx=new (window.AudioContext||window.webkitAudioContext)();
   try{await audioCtx.resume()}catch(e){}
   const src=audioCtx.createMediaStreamSource(stream);
-  analyser=audioCtx.createAnalyser();analyser.fftSize=2048;analyser.smoothingTimeConstant=0.55;analyser.minDecibels=-110;analyser.maxDecibels=-10;micGainNode=audioCtx.createGain();micGainNode.gain.value=micGain;src.connect(micGainNode);micGainNode.connect(analyser);
+  analyser=audioCtx.createAnalyser();analyser.fftSize=2048;analyser.smoothingTimeConstant=0.25;analyser.minDecibels=-110;analyser.maxDecibels=-10;micGainNode=audioCtx.createGain();micGainNode.gain.value=micGain;src.connect(micGainNode);micGainNode.connect(analyser);
   audioDataArray=new Uint8Array(analyser.frequencyBinCount);micStream=stream;audioActive=true;
   bassAvg=0.25;midAvg=0.2;highAvg=0.15;updateAudioUI();silentSince=Date.now();
   notify('🎤 Audio FX ACTIVO'+(label?' ('+label+')':''));
@@ -4602,7 +4602,7 @@ const mr=document.getElementById('micGainRange');if(mr){mr.value=micPos;setMicGa
 <script>
 /* ===== 7.10 · AUDIO SHOW: reloj de ritmo, circulos, on/off al golpe ===== */
 (function(){
-const A=window.BARRIOS_AS={style:'auto'};
+const A=window.BARRIOS_AS={style:'sub'};
 const NAMES={pulse:'Pulso',circle:'Círculos',chase:'Chase',alt:'Alterno',wave:'Ola',fan:'Abanico',rainbow:'Arcoíris',cross:'Cruce',burst:'Strobe',calm:'Calma',snare:'Golpes'};
 const AUTO=['circle','pulse','chase','fan','alt','rainbow','cross','wave','snare'];
 let gateV=45,velV=50;try{const g=parseFloat(localStorage.getItem('barrios_as_gate')),v=parseFloat(localStorage.getItem('barrios_as_vel'));if(isFinite(g))gateV=g;if(isFinite(v))velV=v}catch(e){}
@@ -4612,8 +4612,8 @@ const st={F:null,P:{b:0.12,m:0.12,h:0.12},bpmS:100,synth:0,beatN:0,lastBeat:0,iv
 const fr=x=>x-Math.floor(x);
 function hsv(h,s,v){h=fr(h)*6;const i=Math.floor(h),f=h-i,p=v*(1-s),q=v*(1-s*f),t=v*(1-s*(1-f));
   return [[v,t,p],[q,v,p],[p,v,t],[p,q,v],[t,p,v],[v,p,q]][i%6].map(x=>Math.round(x*255))}
-A.setStyle=function(v){A.style=v;st.sceneBeat=0;try{localStorage.setItem('barrios_as_style',v)}catch(e){};if(typeof notify==='function')notify('Show de audio: '+(v==='auto'?'AUTO (cambia solo)':NAMES[v]))};
-try{const v=localStorage.getItem('barrios_as_style');if(v&&(v==='auto'||NAMES[v]))A.style=v}catch(e){}
+A.setStyle=function(v){A.style=v;st.sceneBeat=0;try{const el=document.getElementById('asStyleSel');if(el)el.value=v}catch(e){};try{localStorage.setItem('barrios_as_style2',v)}catch(e){};if(typeof notify==='function')notify('Show de audio: '+(v==='sub'?'SUB FLASH (un flash por bombo)':v==='auto'?'AUTO (cambia solo)':NAMES[v]))};
+try{const v=localStorage.getItem('barrios_as_style2');if(v&&(v==='sub'||v==='auto'||NAMES[v]))A.style=v}catch(e){}
 function pickScene(){let k;do{k=Math.floor(Math.random()*AUTO.length)}while(AUTO[k]===st.scene&&AUTO.length>1);return AUTO[k]}
 function onBeat(now,synthetic){
   st.beatN++;st.sceneBeat++;st.kick=1;st.hue+=0.07;
@@ -4637,6 +4637,13 @@ function frame(now,dt){
   const V=st.av,nb=lb/P.b,nm=0,nh=0; /* solo bombo */
   V.b+=(nb-V.b)*Math.min(1,dt*5);V.m+=(nm-V.m)*Math.min(1,dt*5);V.h+=(nh-V.h)*Math.min(1,dt*5);
   const sens=(typeof audioSensitivity==='number'?audioSensitivity:1.3)/1.3;
+  /* SUB FLASH: detector simple y estable (solo graves) */
+  {const sa=st.subAvg===undefined?lb:st.subAvg;st.subAvg=sa+(lb-sa)*Math.min(1,dt*2.5);
+   if(st.subArm===undefined){st.subArm=true;st.subLast=-9999;st.subPrev=0;st.subLvl=0}
+   const trig=st.subArm&&lb>0.05&&nb>0.45&&lb>st.subAvg*1.35+0.02&&lb-st.subPrev>0.008&&now-st.subLast>170;
+   if(trig){st.subLast=now;st.subArm=false;st.subLvl=lb;st.subHits=(st.subHits||0)+1}
+   else if(!st.subArm&&lb<st.subLvl*0.65)st.subArm=true;
+   st.subPrev=lb}
   /* bombo */
   if(!st.sil&&lb>0.05&&nb>0.55/Math.max(0.6,sens)&&nb-st.pb>0.015&&nb>V.b*1.18&&now-st.lastBeat>260){st.synth=0;onBeat(now,false)}
   else if(!st.sil&&st.bpm&&st.synth<4&&now-st.lastBeat>60000/st.bpm*1.15&&now-st.lastBeat>420){st.synth++;onBeat(now,true)} /* mantiene el ritmo si falla un golpe */
@@ -4652,10 +4659,13 @@ function frame(now,dt){
   if(A.style!=='auto')st.scene=A.style;
   else if(!NAMES[st.scene]||st.scene==='calm'||st.scene==='burst')st.scene=pickScene();
   st.cur=st.sil?'calm':(now<st.burstUntil?'burst':st.scene);
-  if(now-st.lastInfo>400){st.lastInfo=now;const el=document.getElementById('asInfo');if(el)el.textContent=(st.bpm?st.bpm+' BPM · ':'')+NAMES[st.cur]}
+  if(now-st.lastInfo>(A.style==='sub'?90:400)){st.lastInfo=now;const el=document.getElementById('asInfo');if(el)el.textContent=A.style==='sub'?('SUB FLASH '+((now-st.subLast)<120?'●':'○')):(st.bpm?st.bpm+' BPM · ':'')+NAMES[st.cur]}
 }
 A.fx=function(f,idx,mover,bPan,bTilt,size,hasMove,now,dt){
   if(st.lastFrame!==now){st.lastFrame=now;frame(now,dt)}
+  if(A.style==='sub'){
+    const age=now-st.subLast,env=st.sil&&age>400?0:(age<55?1:Math.max(0,1-(age-55)/140));
+    f.values.Dimmer=Math.round(env*255);if(f.values.Strobe>0)f.values.Strobe=0;return}
   const n=st.n,sc=st.cur,i=idx,k=st.kick,u=fr(st.clock),en=st.energy,mid=(n-1)/2;
   let env=0,h=st.hue+i/n*0.15,sat=1;
   if(sc==='pulse'){env=u<0.5?1-u*1.6:0;h=st.hue+i/n*0.12}
