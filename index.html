@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BARRIOS PRO - Controlador de Iluminación DMX</title>
-<meta name="barrios-version" content="7.2.0">
+<meta name="barrios-version" content="7.3.0">
 <style>
 :root{
   --bg:#0b0f17;--bg2:#151d2b;--bg3:#1e293b;--line:#324258;--txt:#e6eef8;--mut:#95a8c0;
@@ -72,7 +72,7 @@ input[type=text],input[type=number],select{background:#111926;border:1px solid #
 <body>
 <div id="app">
 <header class="topbar">
-  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.2.0</div></div>
+  <div class="brand"><div class="logo" aria-label="BARRIOS PRO"><span class="bp-mark">BP</span></div><div class="title">BARRIOS <span>DMX</span> PRO v7.3.0</div></div>
   <div class="topbtns">
     <button onclick="openTool('Nuevo Show')">📄 Nuevo</button>
     <button onclick="openTool('Abrir Show')">📂 Abrir</button>
@@ -4378,12 +4378,19 @@ window.applyShow=applyShow;
 window.saveShow=function(){
   openModal('💾 Guardar Show',`<div style="padding:10px;max-width:520px"><p style="margin:0 0 6px;color:#9fb0c3;font-size:13px">Poné un nombre para este show:</p>
   <input id="shName" value="${esc(lastName||'Mi show')}" style="width:100%;box-sizing:border-box;padding:9px;font-size:15px;background:#070c14;color:#fff;border:1px solid #2b3b52;border-radius:8px">
-  <label style="display:flex;gap:8px;align-items:center;margin:10px 0;font-size:13px"><input type="checkbox" id="shFile"> También descargar un archivo .json (para llevar en el pendrive)</label>
-  <div style="display:flex;gap:8px"><button class="gold" onclick="BARRIOS72.doSave()">💾 Guardar</button><button onclick="closeModal()">Cancelar</button></div></div>`);
-  setTimeout(()=>{const i=document.getElementById('shName');if(i){i.focus();i.select();i.onkeydown=e=>{if(e.key==='Enter')BARRIOS72.doSave()}}},50)};
+  <p style="margin:12px 0 8px;font-size:12px;color:#9fb0c3">Elegí dónde querés guardarlo:</p>
+  <div style="display:flex;flex-direction:column;gap:8px"><button class="gold" style="padding:10px" onclick="BARRIOS72.saveAs()">📁 Guardar en una carpeta… (elegís dónde: escritorio, pendrive, etc.)</button>
+  <button style="padding:9px" onclick="BARRIOS72.doSave()">💾 Guardar solo dentro del programa (lista de Abrir)</button><button onclick="closeModal()">Cancelar</button></div></div>`);
+  setTimeout(()=>{const i=document.getElementById('shName');if(i){i.focus();i.select();i.onkeydown=e=>{if(e.key==='Enter')BARRIOS72.saveAs()}}},50)};
 const B=window.BARRIOS72={};
-B.doSave=function(){const n=(document.getElementById('shName').value||'').trim()||'Mi show',f=document.getElementById('shFile').checked;
-  save();if(!putShow(n))return;lastName=n;try{localStorage.setItem('barrios_last_show_name',n)}catch(e){}if(f)download(n);closeModal();notify('Show "'+n+'" guardado')};
+B.doSave=function(){const n=(document.getElementById('shName').value||'').trim()||'Mi show';
+  save();if(!putShow(n))return;lastName=n;try{localStorage.setItem('barrios_last_show_name',n)}catch(e){}closeModal();notify('Show "'+n+'" guardado en el programa')};
+B.saveAs=async function(){const n=(document.getElementById('shName').value||'').trim()||'Mi show';save();putShow(n,true);lastName=n;try{localStorage.setItem('barrios_last_show_name',n)}catch(e){}
+  const json=JSON.stringify(state,null,1);
+  if(window.showSaveFilePicker){try{const h=await window.showSaveFilePicker({suggestedName:n.replace(/[\\/:*?"<>|]+/g,'_')+'.json',types:[{description:'Show BARRIOS DMX PRO (.json)',accept:{'application/json':['.json']}}]});
+      const w=await h.createWritable();await w.write(json);await w.close();closeModal();notify('Show guardado como "'+h.name+'"');return}
+    catch(e){if(e&&e.name==='AbortError')return}}
+  download(n);closeModal();notify('Show "'+n+'" guardado (carpeta de Descargas)')};
 /* ---- Abrir ---- */
 function openList(){const l=rd();
   openModal('📂 Abrir Show',`<div style="padding:10px;max-width:620px"><div style="max-height:46vh;overflow:auto;border:1px solid #2b3b52;border-radius:8px">`+
@@ -4406,6 +4413,18 @@ const origTool=window.openTool;
 window.openTool=function(name){if(name==='Nuevo Show')return newShow();if(name==='Abrir Show')return openList();return origTool.apply(this,arguments)};
 })();
 
+</script>
+<script>
+/* ===== BARRIOS 7.2 · PANTALLA COMPLETA 3D ===== */
+(function(){
+const wrap=document.getElementById('stageWrap');if(!wrap)return;
+const css=document.createElement('style');css.textContent='#stageWrap:fullscreen{width:100vw;height:100vh;background:#080c14}#fsExit{position:absolute;top:10px;right:12px;z-index:30;display:none;padding:6px 12px;background:rgba(9,13,22,.85);color:#fff;border:1px solid #f5b800;border-radius:8px;font-weight:700;cursor:pointer}#stageWrap:fullscreen #fsExit{display:block}';document.head.appendChild(css);
+const ex=document.createElement('button');ex.id='fsExit';ex.type='button';ex.textContent='⤢ Salir de pantalla completa (Esc)';ex.onclick=e=>{e.stopPropagation();toggleFS()};wrap.appendChild(ex);
+function toggleFS(){try{if(document.fullscreenElement)document.exitFullscreen();else (wrap.requestFullscreen||wrap.webkitRequestFullscreen).call(wrap)}catch(e){notify('Este equipo no permite pantalla completa')}}
+window.toggleStageFullscreen=toggleFS;
+const q=document.getElementById('trussQuickSelect');if(q){const b=document.createElement('button');b.id='fsBtn';b.type='button';b.textContent='⛶ Pantalla completa';b.title='Ver el escenario 3D a pantalla completa (Esc para salir)';b.onclick=toggleFS;q.insertAdjacentElement('afterend',b)}
+document.addEventListener('fullscreenchange',()=>{const m=document.getElementById('cm3d');if(m){(document.fullscreenElement||document.body).appendChild(m);m.style.display='none'}});
+})();
 </script>
 </body>
 </html>
